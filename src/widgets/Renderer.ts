@@ -1,11 +1,11 @@
-import * as THREE from "three/webgpu";
+import * as THREE from "three";
 import { ServiceRegistry } from "../core/ServiceRegistry";
 
 import type { Size } from "../utils/Size";
 import type { Scene } from "./Scene";
 import type { Camera } from "./Camera";
 
-export class Renderer extends THREE.WebGPURenderer {
+export class Renderer extends THREE.WebGLRenderer {
   private root: HTMLElement;
   private _size: Size;
   private _scene: Scene;
@@ -30,7 +30,6 @@ export class Renderer extends THREE.WebGPURenderer {
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
     
-    await this.init();
     this.isInitialized = true;
   }
 
@@ -48,7 +47,7 @@ export class Renderer extends THREE.WebGPURenderer {
 
   update() {
     if (this.isInitialized) {
-      this.render(this._scene, this._camera);
+      this.render(this._scene, this._camera.instance);
     }
   }
 }
