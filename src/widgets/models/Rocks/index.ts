@@ -4,25 +4,12 @@ import { BaseModel } from "../BaseModel";
 import { RocksPositionDebuger } from "./models/Rocks.PositionDebug";
 import { TweakPane } from "@/widgets/TweakPane";
 
-interface RockPiece {
-  mesh: THREE.Mesh;
-  rigidBody: RAPIER.RigidBody;
-  originalPosition: THREE.Vector3;
-  debugBox?: THREE.Mesh; // 물리 바운딩 박스 시각화
-}
-
 interface RockInstance {
   position: THREE.Vector3;
   rotation: THREE.Euler;
   scale: THREE.Vector3;
   matrix: THREE.Matrix4;
   rigidBody?: RAPIER.RigidBody;
-}
-
-interface DebugOptions {
-  showPhysicsBoxes: boolean;
-  showModelBounds: boolean;
-  showPositionMarkers: boolean;
 }
 
 interface InstanceOptions {
@@ -42,21 +29,12 @@ export interface PositionOptions {
 }
 
 export class Rocks extends BaseModel {
-  private scale: number = 1;
-  private rockPieces: RockPiece[] = [];
   private meshesToProcess: THREE.Mesh[] = [];
-  private debugOptions: DebugOptions = {
-    showPhysicsBoxes: true,
-    showModelBounds: true,
-    showPositionMarkers: true
-  };
-  private debugGroup: THREE.Group = new THREE.Group();
-  private modelBoundsHelper?: THREE.Box3Helper;
   private positionDebuger: RocksPositionDebuger;
 
   // Instance mode properties
   private instanceOptions: InstanceOptions = {
-    enabled: false,
+    enabled: true,
     count: 5,
     areaSize: 100,
     minScale: 0.5,
@@ -73,10 +51,9 @@ export class Rocks extends BaseModel {
     positionZ: -16
   }
 
-  constructor(position: THREE.Vector3 = new THREE.Vector3(0, 1, 0), useInstances: boolean = false) {
+  constructor(position: THREE.Vector3 = new THREE.Vector3(0, 1, 0)) {
     super("rocksModel", position);
 
-    this.instanceOptions.enabled = useInstances;
     this.positionDebuger = new RocksPositionDebuger(this.positionOptions);
     this.setupTweakPane();
   }
@@ -93,15 +70,8 @@ export class Rocks extends BaseModel {
       this.updatePosition(options);
     });
 
-    // Instance mode toggle
-    f.addBinding(this.instanceOptions, 'enabled', {
-      label: 'Use Instances'
-    }).on('change', () => this.toggleInstanceMode());
-
-    // Instance controls (only show when instance mode is enabled)
-    if (this.instanceOptions.enabled) {
-      this.addInstanceControls(f);
-    }
+    // Instance controls
+    this.addInstanceControls(f);
   }
 
   private addInstanceControls(folder: any): void {
@@ -145,6 +115,28 @@ export class Rocks extends BaseModel {
         this.instanceOptions.randomSeed = Math.random() * 100000;
         this.regenerateInstances();
       });
+
+    // 디버깅을 위한 물리 바디 정보 출력
+    folder.addButton({ title: 'Debug Physics Info' })
+      .on('click', () => {
+        console.log('=== Rocks Physics Debug Info ===');
+        console.log(`Total meshesToProcess: ${this.meshesToProcess.length}`);
+        console.log(`Total rockInstances: ${this.rockInstances.length}`);
+        console.log(`Instances with physics: ${this.rockInstances.filter(i => i.rigidBody).length}`);
+        
+        this.meshesToProcess.forEach((mesh, index) => {
+          console.log(`Mesh ${index}: ${mesh.name || 'unnamed'}, vertices: ${mesh.geometry.attributes.position.count}`);
+        });
+        
+        this.rockInstances.forEach((instance, index) => {
+          if (instance.rigidBody) {
+            const colliders = instance.rigidBody.numColliders();
+            console.log(`Instance ${index}: ${colliders} colliders`);
+          } else {
+            console.log(`Instance ${index}: No physics body!`);
+          }
+        });
+      });
   }
 
   protected setupModelStructure(clonedModel: THREE.Object3D): void {
@@ -154,17 +146,8 @@ export class Rocks extends BaseModel {
     // GLB 파일에서 모든 mesh들을 찾아서 분리
     this.extractMeshesFromModel(clonedModel);
     
-    if (this.instanceOptions.enabled) {
-      // 인스턴스 모드: 메시들을 템플릿으로만 사용
-      this.mesh = this.meshesToProcess[0] || clonedModel;
-    } else {
-      // 단일 모드: 기존 로직 유지
-      this.meshesToProcess.forEach(mesh => {
-        this.modelGroup!.add(mesh);
-      });
-      // 첫 번째 mesh를 메인 mesh로 설정 (호환성 유지)
-      this.mesh = this.meshesToProcess[0] || clonedModel;
-    }
+    // 인스턴스 모드: 메시들을 템플릿으로만 사용
+    this.mesh = this.meshesToProcess[0] || clonedModel;
   }
 
   /**
@@ -194,29 +177,10 @@ export class Rocks extends BaseModel {
     if (!this.mesh || this.meshesToProcess.length === 0 || !this.modelGroup) {
       return;
     }
-    
-    if (this.instanceOptions.enabled) {
-      this.setupInstanceMode();
-    } else {
-      this.setupSingleMode();
-    }
+    this.setupInstances();
   }
 
-  private setupSingleMode(): void {
-    // 기존 단일 모드 로직
-    this.modelGroup!.scale.setScalar(this.scale);
-    const scaledBounds = this.getModelBounds();
-    
-    const floorHeight = this.positionOptions.positionY;
-    const rockBottomY = scaledBounds.box.min.y;
-    this.modelGroup!.position.y = floorHeight - rockBottomY;
-    this.modelGroup!.position.x = this.positionOptions.positionX;
-    this.modelGroup!.position.z = this.positionOptions.positionZ;
-    
-    this.setupPhysicsAfterPositioning();
-  }
-
-  private setupInstanceMode(): void {
+  private setupInstances(): void {
     this.generateInstances();
     this.createInstancedMeshes();
     this.setupInstancePhysics();
@@ -318,28 +282,10 @@ export class Rocks extends BaseModel {
     if (!this.context || this.meshesToProcess.length === 0) return;
     
     const { physics } = this.context;
-    const template = this.meshesToProcess[0];
-    
-    // 공통 충돌체 모양 생성
-    const geometry = template.geometry;
-    const vertices = geometry.attributes.position.array;
-    const indices = geometry.index?.array;
-    
-    let colliderDesc: RAPIER.ColliderDesc | null = null;
-    
-    if (indices && indices.length > 0) {
-      colliderDesc = RAPIER.ColliderDesc.trimesh(
-        new Float32Array(vertices),
-        new Uint32Array(indices)
-      );
-    } else {
-      colliderDesc = RAPIER.ColliderDesc.convexHull(new Float32Array(vertices));
-    }
-    
-    if (!colliderDesc) return;
     
     // 각 인스턴스에 대해 물리 바디 생성
     this.rockInstances.forEach((instance) => {
+      // 리지드 바디 생성
       const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed();
       rigidBodyDesc.setTranslation(instance.position.x, instance.position.y, instance.position.z);
       
@@ -353,55 +299,66 @@ export class Rocks extends BaseModel {
       
       const rigidBody = physics.world.createRigidBody(rigidBodyDesc);
       
-      // Note: Create scaled vertices for each instance
-      const scaledVertices = new Float32Array(vertices.length);
-      for (let i = 0; i < vertices.length; i += 3) {
-        scaledVertices[i] = vertices[i] * instance.scale.x;
-        scaledVertices[i + 1] = vertices[i + 1] * instance.scale.y;
-        scaledVertices[i + 2] = vertices[i + 2] * instance.scale.z;
-      }
-      
-      let scaledColliderDesc: RAPIER.ColliderDesc;
-      if (indices && indices.length > 0) {
-        scaledColliderDesc = RAPIER.ColliderDesc.trimesh(
-          scaledVertices,
-          new Uint32Array(indices)
-        );
-      } else {
-        const convexDesc = RAPIER.ColliderDesc.convexHull(scaledVertices);
-        if (!convexDesc) return; // Skip if convex hull creation fails
-        scaledColliderDesc = convexDesc;
-      }
-      
-      physics.world.createCollider(scaledColliderDesc, rigidBody);
+      // 모든 메시 템플릿에 대해 충돌체 생성하여 복합 충돌체 구성
+      this.meshesToProcess.forEach((template) => {
+        const geometry = template.geometry;
+        const vertices = geometry.attributes.position.array;
+        const indices = geometry.index?.array;
+        
+        if (!vertices || vertices.length === 0) {
+          console.warn('Empty geometry found, skipping mesh template');
+          return;
+        }
+        
+        // 메시의 로컬 변환을 고려한 정점 변환
+        const meshMatrix = new THREE.Matrix4();
+        meshMatrix.compose(template.position, template.quaternion, template.scale);
+        
+        // 인스턴스 스케일과 메시 변환을 모두 적용한 정점 생성
+        const transformedVertices = new Float32Array(vertices.length);
+        const vertex = new THREE.Vector3();
+        
+        for (let i = 0; i < vertices.length; i += 3) {
+          vertex.set(vertices[i], vertices[i + 1], vertices[i + 2]);
+          
+          // 메시의 로컬 변환 적용
+          vertex.applyMatrix4(meshMatrix);
+          
+          // 인스턴스 스케일 적용
+          transformedVertices[i] = vertex.x * instance.scale.x;
+          transformedVertices[i + 1] = vertex.y * instance.scale.y;
+          transformedVertices[i + 2] = vertex.z * instance.scale.z;
+        }
+        
+        // 충돌체 생성
+        let colliderDesc: RAPIER.ColliderDesc | null = null;
+        
+        if (indices && indices.length > 0) {
+          colliderDesc = RAPIER.ColliderDesc.trimesh(
+            transformedVertices,
+            new Uint32Array(indices)
+          );
+        } else {
+          colliderDesc = RAPIER.ColliderDesc.convexHull(transformedVertices);
+        }
+        
+        if (!colliderDesc) {
+          console.warn('Failed to create collider for mesh template:', template.name);
+          return;
+        }
+        
+        // 동일한 리지드 바디에 충돌체 추가 (복합 충돌체)
+        physics.world.createCollider(colliderDesc, rigidBody);
+      });
       
       instance.rigidBody = rigidBody;
     });
   }
 
-  private toggleInstanceMode(): void {
-    // 기존 물리 바디들 정리
-    this.cleanupCurrentMode();
-    
-    // TweakPane 재설정
-    this.setupTweakPane();
-    
-    // 모델 재로드
-    if (this.mesh) {
-      this.onModelLoaded();
-    }
-  }
-
-  private cleanupCurrentMode(): void {
+  private cleanupInstances(): void {
     if (!this.context) return;
     
     const { physics } = this.context;
-    
-    // 단일 모드 정리
-    this.rockPieces.forEach(piece => {
-      physics.world.removeRigidBody(piece.rigidBody);
-    });
-    this.rockPieces = [];
     
     // 인스턴스 모드 정리
     this.rockInstances.forEach(instance => {
@@ -425,122 +382,13 @@ export class Rocks extends BaseModel {
   }
 
   private regenerateInstances(): void {
-    if (!this.instanceOptions.enabled) return;
-    
-    this.cleanupCurrentMode();
-    this.setupInstanceMode();
+    this.cleanupInstances();
+    this.setupInstances();
   }
 
   protected async setupPhysics(): Promise<void> {
     // 빈 구현 - 실제 물리 설정은 onModelLoaded()에서 호출
     // BaseModel의 초기화 순서 때문에 여기서는 아무것도 하지 않음
-  }
-
-  private async setupPhysicsAfterPositioning(): Promise<void> {
-    if (!this.context || this.meshesToProcess.length === 0) return;
-
-    // 각 mesh에 대해 개별적으로 물리 바디 생성
-    for (const mesh of this.meshesToProcess) {
-      await this.createPhysicsForMesh(mesh);
-    }
-  }
-
-  private async createPhysicsForMesh(mesh: THREE.Mesh): Promise<void> {
-    if (!mesh.geometry || !this.modelGroup) return;
-    const { physics } = this.context!;
-
-    // Mesh의 geometry에서 충돌체 생성
-    const geometry = mesh.geometry;
-    const vertices = geometry.attributes.position.array;
-    const indices = geometry.index?.array;
-
-    // ConvexHull 또는 TriMesh 충돌체 생성
-    let colliderDesc: RAPIER.ColliderDesc | null = null;
-    
-    if (indices && indices.length > 0) {
-      colliderDesc = RAPIER.ColliderDesc.trimesh(
-        new Float32Array(vertices),
-        new Uint32Array(indices)
-      );
-    } else {
-      colliderDesc = RAPIER.ColliderDesc.convexHull(new Float32Array(vertices));
-    }
-
-    if (!colliderDesc) {
-      console.warn('Failed to create collider for mesh:', mesh.name);
-      return;
-    }
-
-    // 정적 리지드 바디 생성 (바위는 움직이지 않음)
-    const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed();
-    
-    // 모델 그룹의 월드 변환을 포함한 mesh의 실제 위치 계산
-    this.modelGroup.updateMatrixWorld();
-    mesh.updateMatrixWorld();
-    
-    const worldPosition = new THREE.Vector3();
-    const worldQuaternion = new THREE.Quaternion();
-    const worldScale = new THREE.Vector3();
-    
-    // mesh의 로컬 위치에 modelGroup의 변환 적용
-    const meshWorldMatrix = new THREE.Matrix4();
-    meshWorldMatrix.multiplyMatrices(this.modelGroup.matrixWorld, mesh.matrix);
-    meshWorldMatrix.decompose(worldPosition, worldQuaternion, worldScale);
-    
-    
-    rigidBodyDesc.setTranslation(worldPosition.x, worldPosition.y, worldPosition.z);
-    rigidBodyDesc.setRotation({
-      x: worldQuaternion.x,
-      y: worldQuaternion.y,
-      z: worldQuaternion.z,
-      w: worldQuaternion.w
-    });
-
-    const rigidBody = physics.world.createRigidBody(rigidBodyDesc);
-    physics.world.createCollider(colliderDesc, rigidBody);
-
-    let debugBox: THREE.Mesh | undefined;
-    if (this.debugOptions.showPhysicsBoxes) {
-      debugBox = this.createPhysicsDebugBox(mesh, worldPosition, worldQuaternion, worldScale);
-      this.debugGroup.add(debugBox);
-    }
-
-    this.rockPieces.push({
-      mesh,
-      rigidBody,
-      originalPosition: worldPosition.clone(),
-      debugBox
-    });
-  }
-
-  /**
-   * 물리 바운딩 박스 시각화 생성
-   */
-  private createPhysicsDebugBox(originalMesh: THREE.Mesh, position: THREE.Vector3, quaternion: THREE.Quaternion, scale: THREE.Vector3): THREE.Mesh {
-    // 원본 mesh의 geometry 경계박스를 기반으로 크기 계산
-    const bbox = new THREE.Box3().setFromObject(originalMesh);
-    const size = bbox.getSize(new THREE.Vector3());
-    
-    // 박스 지오메트리 생성 (스케일 적용)
-    const geometry = new THREE.BoxGeometry(
-      size.x * scale.x, 
-      size.y * scale.y, 
-      size.z * scale.z
-    );
-    
-    const material = new THREE.MeshBasicMaterial({ 
-      color: 0xff00ff, 
-      wireframe: true,
-      transparent: true,
-      opacity: 0.5
-    });
-    
-    const debugBox = new THREE.Mesh(geometry, material);
-    debugBox.position.copy(position);
-    debugBox.quaternion.copy(quaternion);
-    debugBox.name = `PhysicsBox_${originalMesh.name || 'unnamed'}`;
-    
-    return debugBox;
   }
 
   protected getModelBounds(): { size: THREE.Vector3; center: THREE.Vector3; box: THREE.Box3 } {
@@ -556,40 +404,33 @@ export class Rocks extends BaseModel {
   }
 
   update(_deltaTime: number): void {
-    if (this.instanceOptions.enabled) {
-      // 인스턴스 모드: 특별한 업데이트 로직 없음
-      return;
-    }
+    // 동적 물리 바디가 있는 인스턴스의 렌더링 동기화
+    let hasUpdates = false;
     
-    // 단일 모드: 기존 업데이트 로직
-    if (this.debugOptions.showPhysicsBoxes) {
-      this.updatePhysicsDebugVisualization();
-    }
-    
-    this.rockPieces.forEach(piece => {
-      if (piece.rigidBody.bodyType() === RAPIER.RigidBodyType.Dynamic) {
-        const position = piece.rigidBody.translation();
-        const rotation = piece.rigidBody.rotation();
+    this.rockInstances.forEach((instance) => {
+      if (instance.rigidBody && instance.rigidBody.bodyType() === RAPIER.RigidBodyType.Dynamic) {
+        const position = instance.rigidBody.translation();
+        const rotation = instance.rigidBody.rotation();
         
-        piece.mesh.position.set(position.x, position.y, position.z);
-        piece.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+        // 인스턴스 데이터 업데이트
+        instance.position.set(position.x, position.y, position.z);
+        instance.rotation.setFromQuaternion(new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w));
+        
+        // 변환 행렬 재계산
+        instance.matrix.compose(
+          instance.position,
+          new THREE.Quaternion(rotation.x, rotation.y, rotation.z, rotation.w),
+          instance.scale
+        );
+        
+        hasUpdates = true;
       }
     });
-  }
-
-  /**
-   * 물리 디버그 시각화 업데이트
-   */
-  private updatePhysicsDebugVisualization(): void {
-    this.rockPieces.forEach(piece => {
-      if (piece.debugBox && piece.rigidBody) {
-        const position = piece.rigidBody.translation();
-        const rotation = piece.rigidBody.rotation();
-        
-        piece.debugBox.position.set(position.x, position.y, position.z);
-        piece.debugBox.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
-      }
-    });
+    
+    // 동적 인스턴스가 있을 때만 렌더링 행렬 업데이트
+    if (hasUpdates) {
+      this.updateInstancedMeshMatrices();
+    }
   }
 
   /**
@@ -597,6 +438,11 @@ export class Rocks extends BaseModel {
    */
   private updatePosition(options: PositionOptions): void {
     if (!this.modelGroup) return;
+    
+    // 기존 위치와의 차이 계산
+    const deltaX = options.positionX - this.positionOptions.positionX;
+    const deltaY = options.positionY - this.positionOptions.positionY;
+    const deltaZ = options.positionZ - this.positionOptions.positionZ;
     
     this.positionOptions.positionX = options.positionX;
     this.positionOptions.positionY = options.positionY;
@@ -606,47 +452,51 @@ export class Rocks extends BaseModel {
     this.modelGroup.position.y = options.positionY;
     this.modelGroup.position.z = options.positionZ;
     
-    this.updatePhysicsBodies();
+    // 모든 인스턴스의 물리 바디 위치 업데이트
+    this.rockInstances.forEach(instance => {
+      if (instance.rigidBody) {
+        const currentPos = instance.rigidBody.translation();
+        instance.rigidBody.setTranslation({
+          x: currentPos.x + deltaX,
+          y: currentPos.y + deltaY,
+          z: currentPos.z + deltaZ
+        }, true);
+        
+        // 인스턴스 위치 데이터도 업데이트
+        instance.position.x += deltaX;
+        instance.position.y += deltaY;
+        instance.position.z += deltaZ;
+        
+        // 변환 행렬 재계산
+        instance.matrix.compose(
+          instance.position, 
+          new THREE.Quaternion().setFromEuler(instance.rotation), 
+          instance.scale
+        );
+      }
+    });
+    
+    // 렌더링 행렬 업데이트
+    this.updateInstancedMeshMatrices();
   }
 
   /**
-   * 물리 바디들의 위치를 새로운 모델 위치에 맞게 업데이트
+   * 인스턴스드 메시의 변환 행렬들을 업데이트
    */
-  private updatePhysicsBodies(): void {
-    if (!this.context || !this.modelGroup) return;
-    
-    this.rockPieces.forEach(piece => {
-      // 원래 상대 위치에 새로운 모델 위치 추가
-      const newPosition = piece.originalPosition.clone().add(this.modelGroup!.position);
-      
-      piece.rigidBody.setTranslation(newPosition, true);
-      
-      // 디버그 박스도 함께 업데이트
-      if (piece.debugBox) {
-        piece.debugBox.position.copy(newPosition);
-      }
+  private updateInstancedMeshMatrices(): void {
+    this.instancedMeshes.forEach(instancedMesh => {
+      this.rockInstances.forEach((instance, index) => {
+        instancedMesh.setMatrixAt(index, instance.matrix);
+      });
+      instancedMesh.instanceMatrix.needsUpdate = true;
     });
   }
 
   /**
-   * 특정 바위 조각을 동적으로 변경 (단일 모드)
-   */
-  makeRockPieceDynamic(pieceIndex: number): void {
-    if (pieceIndex < 0 || pieceIndex >= this.rockPieces.length) return;
-    
-    const piece = this.rockPieces[pieceIndex];
-    piece.rigidBody.setBodyType(RAPIER.RigidBodyType.Dynamic, true);
-    
-    // 랜덤한 충격 가하기
-    const impulse = { x: (Math.random() - 0.5) * 5, y: Math.random() * 3 + 1, z: (Math.random() - 0.5) * 5 };
-    piece.rigidBody.applyImpulse(impulse, true);
-  }
-
-  /**
-   * 인스턴스 모드에서 특정 바위를 동적으로 만들기
+   * 특정 바위 인스턴스를 동적으로 만들기
    */
   makeInstanceDynamic(instanceIndex: number): void {
-    if (!this.instanceOptions.enabled || instanceIndex >= this.rockInstances.length) return;
+    if (instanceIndex >= this.rockInstances.length) return;
     
     const instance = this.rockInstances[instanceIndex];
     if (!instance.rigidBody) return;
@@ -661,25 +511,12 @@ export class Rocks extends BaseModel {
     instance.rigidBody.applyImpulse(impulse, true);
   }
 
-  getRockPieces(): readonly RockPiece[] {
-    return this.rockPieces;
-  }
-
   getRockInstances(): readonly RockInstance[] {
     return this.rockInstances;
   }
 
-  isInstanceMode(): boolean {
-    return this.instanceOptions.enabled;
-  }
-
   dispose(): void {
-    this.cleanupCurrentMode();
-    
-    this.debugGroup.clear();
-    if (this.modelBoundsHelper) {
-      this.modelBoundsHelper.dispose();
-    }
+    this.cleanupInstances();
     
     this.meshesToProcess = [];
     
