@@ -1,7 +1,7 @@
-import { Vector3 } from "three/webgpu";
+import { Vector3 } from "three";
 import type { FolderApi } from "tweakpane";
 import type { CameraConfig } from "../types";
-import type { PerspectiveCamera } from "three/webgpu";
+import type { PerspectiveCamera } from "three";
 
 /**
  * 🎯 Camera Target Debug Module

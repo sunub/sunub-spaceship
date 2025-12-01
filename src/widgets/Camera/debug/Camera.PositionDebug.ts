@@ -1,6 +1,6 @@
 import type { FolderApi } from "tweakpane";
 import type { CameraConfig } from "../types";
-import type { PerspectiveCamera } from "three/webgpu";
+import type { PerspectiveCamera } from "three";
 
 /**
  * 📍 Camera Position Debug Module

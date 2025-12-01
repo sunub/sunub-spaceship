@@ -1,20 +1,13 @@
 import type { FolderApi } from "tweakpane";
 import type { CameraConfig } from "../types";
-import type { PerspectiveCamera } from "three/webgpu";
+import type { PerspectiveCamera } from "three";
 
-/**
- * 📷 Camera Parameters Debug Module
- * 카메라 기본 파라미터(FOV, Near, Far) 실시간 조정 담당
- */
 export class CameraParametersDebugModule {
   constructor(
     private camera: PerspectiveCamera,
     private cameraParams: CameraConfig
   ) {}
 
-  /**
-   * Camera Parameters 관련 디버그 컨트롤 설정
-   */
   setupDebugControls(parentFolder: FolderApi): void {
     const cameraParamsFolder = parentFolder.addFolder({
       title: "📷 Camera Parameters",
