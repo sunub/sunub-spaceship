@@ -9,13 +9,11 @@ export class Floor extends THREE.Mesh implements IGameObject {
   private size: number = 100;
   private gridMaterial: GridMaterial;
   private gridOptions: {
-    gridScale: number;
-    gridThickness: number;
     gridDensity: number;
+    gridThickness: number;
   } = {
-    gridScale: 64.0,
+    gridDensity: 1.0,
     gridThickness: 0.01,
-    gridDensity: 10.0,
   };
 
   constructor(size: number = 100) {
@@ -24,15 +22,15 @@ export class Floor extends THREE.Mesh implements IGameObject {
     
     // GridMaterial 생성
     this.gridMaterial = new GridMaterial({
-      gridScale: this.gridOptions.gridScale,
-      gridThickness: this.gridOptions.gridThickness,
       gridDensity: this.gridOptions.gridDensity,
+      gridThickness: this.gridOptions.gridThickness,
     });
     
     // Three.js 메쉬 설정
     this.geometry = new THREE.PlaneGeometry(this.size, this.size);
     this.material = this.gridMaterial;
     this.rotation.x = -Math.PI / 2; // 바닥이 되도록 회전
+    this.frustumCulled = false;
   }
 
   async initialize(context: GameContext) {
@@ -45,7 +43,15 @@ export class Floor extends THREE.Mesh implements IGameObject {
   }
 
   update(_deltaTime: number) {
-    // Floor는 정적 객체이므로 업데이트할 것이 없음
+    // if(!this.context || !this.context.camera) {
+    //   return;
+    // }
+
+    // this.position.set(
+    //   this.context.camera.instance.position.x,
+    //   0,
+    //   this.context.camera.instance.position.z
+    // );
   }
 
   private setUpPhysics() {
@@ -85,13 +91,13 @@ export class Floor extends THREE.Mesh implements IGameObject {
       expanded: true,
     });
 
-    f.addBinding(this.gridOptions, "gridScale", {
-      min: 8.0,
-      max: 128.0,
-      step: 4,
-      label: "Grid Scale",
+    f.addBinding(this.gridOptions, "gridDensity", {
+      min: 0.1,
+      max: 16.0,
+      step: 0.1,
+      label: "Grid Density",
     }).on("change", (ev: any) => {
-      this.gridMaterial.setGridScale(ev.value);
+      this.gridMaterial.setGridDensity(ev.value);
     });
     
     f.addBinding(this.gridOptions, "gridThickness", {
@@ -101,15 +107,6 @@ export class Floor extends THREE.Mesh implements IGameObject {
       label: "Grid Thickness",
     }).on("change", (ev: any) => {
       this.gridMaterial.setGridThickness(ev.value);
-    });
-    
-    f.addBinding(this.gridOptions, "gridDensity", {
-      min: 1.0,
-      max: 20.0,
-      step: 0.1,
-      label: "Grid Density",
-    }).on("change", (ev: any) => {
-      this.gridMaterial.setGridDensity(ev.value);
     });
   }
 
