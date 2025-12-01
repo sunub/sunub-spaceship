@@ -619,6 +619,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"camera-controls@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "camera-controls@npm:3.1.0"
+  peerDependencies:
+    three: ">=0.126.1"
+  checksum: 10c0/0b219d02127851c20ee5f6ae3cd408ffc554ca7bca89af2747e9a71ca40a80673b35e57a8d16a6fba5b3e865a4bafe06f5e5d240606a8d1e9674282d7e40e54a
+  languageName: node
+  linkType: hard
+
 "chownr@npm:^3.0.0":
   version: 3.0.0
   resolution: "chownr@npm:3.0.0"
@@ -914,6 +923,13 @@ __metadata:
   version: 4.2.11
   resolution: "graceful-fs@npm:4.2.11"
   checksum: 10c0/386d011a553e02bc594ac2ca0bd6d9e4c22d7fa8cfbfc448a6d148c59ea881b092db9dbe3547ae4b88e55f1b01f7c4a2ecc53b310c042793e63aa44cf6c257f2
+  languageName: node
+  linkType: hard
+
+"gsap@npm:^3.13.0":
+  version: 3.13.0
+  resolution: "gsap@npm:3.13.0"
+  checksum: 10c0/a42dd2e02467a4abe96409aaf6cd0e5d697c72e05ec13c18c2271330493983aa63cc717c9dd0740fda2f884d0f56c7b98fc18b13500f0c1da94864985840da7c
   languageName: node
   linkType: hard
 
@@ -1570,6 +1586,8 @@ __metadata:
     "@tweakpane/plugin-essentials": "npm:^0.2.1"
     "@types/node": "npm:^24.1.0"
     "@types/three": "npm:^0.178.1"
+    camera-controls: "npm:^3.1.0"
+    gsap: "npm:^3.13.0"
     inversify: "npm:^7.9.1"
     reflect-metadata: "npm:^0.2.2"
     rollup-plugin-visualizer: "npm:^6.0.3"
@@ -1578,6 +1596,7 @@ __metadata:
     tweakpane: "npm:^4.0.5"
     typescript: "npm:~5.8.3"
     vite: "npm:^7.0.4"
+    vite-plugin-glsl: "npm:^1.5.4"
   languageName: unknown
   linkType: soft
 
@@ -1661,6 +1680,22 @@ __metadata:
   dependencies:
     imurmurhash: "npm:^0.1.4"
   checksum: 10c0/d324c5a44887bd7e105ce800fcf7533d43f29c48757ac410afd42975de82cc38ea2035c0483f4de82d186691bf3208ef35c644f73aa2b1b20b8e651be5afd293
+  languageName: node
+  linkType: hard
+
+"vite-plugin-glsl@npm:^1.5.4":
+  version: 1.5.4
+  resolution: "vite-plugin-glsl@npm:1.5.4"
+  peerDependencies:
+    "@rollup/pluginutils": ^5.x
+    esbuild: ">= 0.25"
+    vite: ">= 3.x"
+  peerDependenciesMeta:
+    "@rollup/pluginutils":
+      optional: true
+    esbuild:
+      optional: true
+  checksum: 10c0/c8c0d4b93a94fcb289ac2a571dbfaaf8039bbabd3c2a228df912ff636f78887081efaaf8ea3812ac893014d8d0137b94f925c629e393502588f0b024b22ad888
   languageName: node
   linkType: hard
 

@@ -1,10 +1,11 @@
 import path from "path";
 import { defineConfig } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
+import glsl from "vite-plugin-glsl";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [visualizer()],
+  plugins: [visualizer(), glsl()],
   base: "/",
   assetsInclude: ["**/*.glb", "**/*.hdr", "**/*.gltf", "**/*.bin"],
   resolve: {
