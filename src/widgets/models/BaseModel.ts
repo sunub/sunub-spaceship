@@ -16,14 +16,14 @@ export abstract class BaseModel implements IGameObject {
     protected position: THREE.Vector3 = new THREE.Vector3(0, 0, 0)
   ) {}
 
-  async initialize(context: GameContext): Promise<void> {
+  async initialize(context: GameContext, addToScene: boolean = true): Promise<void> {
     this.context = context;
-    await this.loadModel();
+    await this.loadModel(addToScene);
     await this.setupPhysics();
     this.onModelLoaded();
   }
 
-  protected async loadModel(): Promise<void> {
+  protected async loadModel(addToScene: boolean = true): Promise<void> {
     if (!this.context) {
       throw new Error("Context not available during model loading");
     }
@@ -44,7 +44,9 @@ export abstract class BaseModel implements IGameObject {
     if (this.modelGroup) {
       this.modelGroup.position.copy(this.position);
       // 씬에 추가
-      scene.add(this.modelGroup);
+      if (addToScene) {
+        scene.add(this.modelGroup);
+      }
     }
   }
 
