@@ -2,36 +2,36 @@
 // import CameraControls from 'camera-controls';
 // import * as THREE from "three/webgpu";
 // import type { IController, GameContext } from "../../../core/GameContext";
-// import { 
-//   CameraMode, 
-//   type CameraState, 
+// import {
+//   CameraMode,
+//   type CameraState,
 //   type CameraSettings
 // } from "../types";
 // import type { CameraTransitionConfig } from "./types/CameraAnimation";
 
 // /**
 //  * AdaptiveCameraController - Advanced camera system that adapts to different flight scenarios
-//  * 
+//  *
 //  * Features:
 //  * - Multiple camera modes (Free, Follow, Cockpit, Cinematic, Orbit)
 //  * - Smooth transitions between modes using camera-controls
 //  * - Integration with existing ServiceRegistry and GameContext
 //  * - Performance optimized for 60fps
-//  * 
+//  *
 //  * Based on analysis of folio-2019 camera system with modern TypeScript architecture
 //  */
 // export class AdaptiveCameraController implements IController {
 //   // WASD 입력 상태 추적
 //   private _isFollowingTarget: boolean = false;
 //   public enabled: boolean = true;
-  
+
 //   private _context!: GameContext; // Will be used in future phases
 //   private _camera: PerspectiveCamera;
 //   private _cameraControls: CameraControls;
 //   private _currentMode: CameraMode = CameraMode.FOLLOW;
 //   private _targetObject: THREE.Object3D | null = null;
 //   private _isTransitioning: boolean = false;
-  
+
 //   // Camera state tracking
 //   private _state: CameraState = {
 //     mode: CameraMode.FOLLOW,
@@ -58,11 +58,11 @@
 
 //   constructor(camera: PerspectiveCamera, domElement: HTMLElement) {
 //     this._camera = camera;
-    
+
 //     // Initialize camera-controls with Three.js subobjects
 //     CameraControls.install({ THREE: THREE });
 //     this._cameraControls = new CameraControls(camera, domElement);
-    
+
 //     this.applyFollowModeSettings();
 //     this.setupEventHandlers();
 //   }
@@ -72,12 +72,12 @@
 //    */
 //   async initialize(context: GameContext): Promise<void> {
 //     this._context = context;
-    
+
 //     // Set initial camera position based on settings (context-based default position)
 //     const offset = this._followModeSettings.followOffset || new Vector3(8, 12, 8);
 //     this._camera.position.copy(offset);
 //     // Look at origin (0, 0, 0) to match setTarget behavior and prevent unnecessary camera movement
-    
+
 //     // Initial camera state
 //     this.updateState();
 //   }
@@ -123,14 +123,14 @@
 //     try {
 //       // Apply Follow mode settings
 //       this.applyFollowModeSettings();
-      
+
 //       // Handle Follow mode setup
 //       await this.transitionToFollowMode(config?.duration || 1.0);
-      
+
 //       // Update current mode
 //       this._currentMode = CameraMode.FOLLOW;
 //       this._state.mode = CameraMode.FOLLOW;
-      
+
 //       console.log(`✅ Follow camera mode activated`);
 
 //     } catch (error) {
@@ -214,7 +214,7 @@
 //     this._cameraControls.touches = {
 //       one: CameraControls.ACTION.TOUCH_ROTATE,
 //       two: CameraControls.ACTION.TOUCH_TRUCK,
-//       three: CameraControls.ACTION.TOUCH_DOLLY_TRUCK 
+//       three: CameraControls.ACTION.TOUCH_DOLLY_TRUCK
 //     };
 
 //     // 전체 컨트롤 활성화
@@ -223,20 +223,18 @@
 //     console.log(`📐 Applied Follow mode settings:`, settings);
 //   }
 
-
-
 //   private async transitionToFollowMode(_duration: number): Promise<void> {
 //     if (!this._targetObject) {
 //       console.warn("No target object set for follow mode");
 //       return;
 //     }
-    
+
 //     const settings = this._followModeSettings;
 //     const offset = settings.followOffset || new Vector3(8, 12, 8);
-    
+
 //     // Position camera above floor to see target's side view
 //     const targetPosition = this._targetObject.position.clone().add(offset);
-    
+
 //     return this._cameraControls.setPosition(
 //       targetPosition.x,
 //       targetPosition.y,
@@ -244,8 +242,6 @@
 //       true // enableTransition
 //     );
 //   }
-
-
 
 //   /**
 //    * Handle Follow mode updates called every frame
@@ -305,8 +301,6 @@
 //     );
 //   }
 
-
-
 //   /**
 //    * Update internal camera state
 //    */
@@ -322,11 +316,11 @@
 //   private setupEventHandlers(): void {
 //     this._cameraControls.addEventListener('controlstart', () => {
 //     });
-    
+
 //     this._cameraControls.addEventListener('control', () => {
 //       this.updateState();
 //     });
-    
+
 //     this._cameraControls.addEventListener('controlend', () => {
 //     });
 //   }
