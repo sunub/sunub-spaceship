@@ -1,37 +1,33 @@
-import RAPIER from "@dimforge/rapier3d-compat";
-import { PhysicsDebug } from "./materials/PhysicsDebug";
-import EventEmitter from "../utils/EventEmitter";
+import RAPIER from "@dimforge/rapier3d-compat"
+import EventEmitter from "../utils/EventEmitter"
+import { PhysicsDebug } from "./PhysicsDebug"
 
-const GRAVITY = { x: 0.0, y: -9.81, z: 0.0 };
+const GRAVITY = { x: 0.0, y: -9.81, z: 0.0 }
 
 export class Physics extends EventEmitter {
-  world!: RAPIER.World;
-  private debug!: PhysicsDebug;
-  private isInitialized = false;
+	world!: RAPIER.World
+	private debug!: PhysicsDebug
+	private isInitialized = false
 
-  constructor() {
-    super();
-  }
+	async initialize(): Promise<void> {
+		if (this.isInitialized) {
+			return
+		}
 
-  async initialize(): Promise<void> {
-    if (this.isInitialized) {
-      return;
-    }
+		this.world = new RAPIER.World(GRAVITY)
+		this.debug = new PhysicsDebug(this.world)
+		this.isInitialized = true
+	}
 
-    this.world = new RAPIER.World(GRAVITY);
-    this.debug = new PhysicsDebug(this.world);
-    this.isInitialized = true;
-  }
+	step(): void {
+		if (this.isInitialized) {
+			this.world.step()
+		}
+	}
 
-  step(): void {
-    if (this.isInitialized) {
-      this.world.step();
-    }
-  }
-
-  update(): void {
-    if (this.isInitialized) {
-      this.debug.update();
-    }
-  }
+	update(): void {
+		if (this.isInitialized) {
+			this.debug.update()
+		}
+	}
 }
