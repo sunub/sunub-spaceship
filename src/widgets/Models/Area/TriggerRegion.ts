@@ -1,0 +1,92 @@
+import * as RAPIER from "@dimforge/rapier3d-compat"
+import * as THREE from "three"
+import type { GameContext, IGameObject } from "@/core/GameContext"
+import EventEmitter from "@/utils/EventEmitter"
+
+export class TriggerRegion extends EventEmitter implements IGameObject {
+	private mesh: THREE.Mesh
+	private sensor!: RAPIER.Collider
+	private isIn: boolean = false
+	private context: GameContext | null = null
+	private targetBody: RAPIER.RigidBody | null = null
+
+	public get isActive(): boolean {
+		return this.isIn
+	}
+
+	constructor(
+		private position: THREE.Vector3,
+		private size: THREE.Vector3,
+		color: number = 0x00ff00,
+		visible: boolean = false,
+	) {
+		super()
+		this.mesh = new THREE.Mesh(
+			new THREE.BoxGeometry(size.x, size.y, size.z),
+			new THREE.MeshBasicMaterial({
+				color: color,
+				transparent: true,
+				opacity: 0.2,
+				visible: visible,
+			}),
+		)
+		this.mesh.position.copy(position)
+	}
+
+	async initialize(context: GameContext): Promise<void> {
+		this.context = context
+		context.scene.add(this.mesh)
+
+		// Create Rapier Sensor
+		const colliderDesc = RAPIER.ColliderDesc.cuboid(
+			this.size.x / 2,
+			this.size.y / 2,
+			this.size.z / 2,
+		)
+			.setTranslation(this.position.x, this.position.y, this.position.z)
+			.setSensor(true)
+
+		this.sensor = context.physics.world.createCollider(colliderDesc)
+	}
+
+	setTargetBody(body: RAPIER.RigidBody) {
+		this.targetBody = body
+	}
+
+	update(_deltaTime: number) {
+		if (!this.context || !this.targetBody) return
+
+		// 모든 콜라이더에 대해 겹침 확인 (더 견고한 방식)
+		let isIntersecting = false
+		const numColliders = this.targetBody.numColliders()
+
+		for (let i = 0; i < numColliders; i++) {
+			const collider = this.targetBody.collider(i)
+			if (
+				collider &&
+				this.context.physics.world.intersectionPair(
+					this.sensor,
+					collider,
+				)
+			) {
+				isIntersecting = true
+				break
+			}
+		}
+
+		if (isIntersecting && !this.isIn) {
+			this.isIn = true
+			this.trigger("enter")
+		} else if (!isIntersecting && this.isIn) {
+			this.isIn = false
+			this.trigger("exit")
+		}
+	}
+
+	dispose() {
+		if (this.context) {
+			this.context.scene.remove(this.mesh)
+			this.context.physics.world.removeCollider(this.sensor, true)
+		}
+	}
+}
