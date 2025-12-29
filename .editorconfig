@@ -1,8 +1,10 @@
-root = true
-
 [*]
-charset = utf-8
+indent_style = tab
+indent_size = 4
 end_of_line = lf
-indent_size = 2
-indent_style = space
+charset = utf-8
+trim_trailing_whitespace = true
 insert_final_newline = true
+
+[*.{js,ts,jsx,tsx}]
+curly_bracket_next_line = true

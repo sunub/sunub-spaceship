@@ -1,1 +1,1 @@
-export { Camera } from "./instances/Camera";
+export { Camera } from "./instances/Camera"

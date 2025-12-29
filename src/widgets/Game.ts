@@ -1,314 +1,338 @@
-import * as THREE from "three";
-import * as RAPIER from "@dimforge/rapier3d-compat";
-import { ServiceRegistry } from "../core/ServiceRegistry";
-import type {
-  GameContext,
-  IGameObject,
-  IController,
-} from "../core/GameContext";
-import Resources from "../utils/Resources";
-import sources from "../sources";
-
-import { Physics } from "./Physics";
-import { Scene } from "./Scene";
-import { Renderer } from "./Renderer";
-import { Size } from "../utils/Size";
-import Time from "../utils/Time";
-import { Camera } from "./Camera";
-import { Debug } from "./Debug";
-import { Floor } from "./Floor";
-import { SpaceShip } from "./models";
-import { InputManager } from "../Inputs/InputManager";
-import { Vector2Processor } from "../Inputs/processors/Vector2Processor";
-import { FlightActionMapper } from "../Inputs/mappers/FlightActionMapper";
-import { CameraActionMapper } from "../Inputs/mappers/CameraActionMapper";
-import { Area } from "./models/Area";
-import { Rocks, Planet, Atmosphere, Land, EngineFlame } from "./models";
-import { OrbitControls } from "three/examples/jsm/Addons.js";
-import { EffectComposer } from "three/examples/jsm/Addons.js";
-import { RenderPass } from "three/examples/jsm/Addons.js";
-import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
-
-import BlurPass from "@/widgets/Passes/Blur";
-import GlowPass from "@/widgets/Passes/Glow";
-
-interface DirectionShaderPass extends ShaderPass {
-  strength?: number;
-}
-
-interface GlowShaderPass extends ShaderPass {
-  color?: string;
-}
-
-interface Passes {
-  renderPass: RenderPass;
-  horizontalBlurPass: DirectionShaderPass;
-  verticalBlurPass: DirectionShaderPass;
-  glowsPass: GlowShaderPass;
-  composer: EffectComposer;
-}
+import * as RAPIER from "@dimforge/rapier3d-compat"
+import type { OrbitControls } from "three/examples/jsm/Addons.js"
+import * as THREE from "three/webgpu"
+import type { GameContext, IController, IGameObject } from "../core/GameContext"
+import { ProjectRegistry } from "../core/ProjectRegistry"
+import { ServiceRegistry } from "../core/ServiceRegistry"
+import { InputManager } from "../Inputs/InputManager"
+import { FlightActionMapper } from "../Inputs/mappers/FlightActionMapper"
+import { Vector2Processor } from "../Inputs/processors/Vector2Processor"
+import type { InputEventData } from "../Inputs/types"
+import sources from "../sources"
+import Resources from "../utils/Resources"
+import { Size } from "../utils/Size"
+import Time from "../utils/Time"
+import { Camera } from "./Camera"
+import { CSSRenderer } from "./CSSRenderer"
+import { Debug } from "./Debug"
+import { Floor } from "./Floor"
+import { Lighting } from "./Lighting"
+// import { Atmosphere, Planet, Rocks, TreeLights, SpaceShip } from "./models";
+import { SpaceShip } from "./Models"
+import * as Basic from "./Models/Basic"
+import { ProjectOutpost } from "./Models/ProjectOutpost"
+import { Physics } from "./Physics"
+import { Renderer } from "./Renderer"
+import { Scene } from "./Scene"
+import { TerminalOverlay } from "./UI/TerminalOverlay"
 
 export class Game {
-  private static instance: Game;
+	private static instance: Game
 
-  // Core Services (읽기 전용으로 공개)
-  public readonly renderer: Renderer;
-  public readonly scene: Scene;
-  public readonly camera: Camera;
-  public readonly physics: Physics;
-  public readonly time: Time;
-  public readonly size: Size;
-  public readonly debug: Debug;
-  public readonly inputManager: InputManager;
-  public readonly resources: Resources;
+	// Core Services (읽기 전용으로 공개)
+	public readonly renderer: Renderer
+	public readonly scene: Scene
+	public readonly camera: Camera
+	public readonly physics: Physics
+	public readonly time: Time
+	public readonly size: Size
+	public readonly debug: Debug
+	public readonly inputManager: InputManager
+	public readonly resources: Resources
+	public readonly cssRenderer: CSSRenderer
+	public readonly lighting: Lighting
 
-  // Game Objects & Controllers 관리
-  private gameObjects: IGameObject[] = [];
-  private controllers: IController[] = [];
-  private isInitialized = false;
-  private passes?: Passes;
+	// Game Objects & Controllers 관리
+	private gameObjects: IGameObject[] = []
+	private controllers: IController[] = []
+	private projectOutposts: ProjectOutpost[] = []
+	private terminalOverlay: TerminalOverlay
+	private isInitialized = false
+	private isRendering = false
 
-  private constructor() {
-    // GameObject를 초기화 할 경우 내부에서 동작하는 객체들에 대한 의존성의 순서를 고려하는 것이 중요하다.
-    this.debug = new Debug({ title: "Game Controller" });
-    this.time = new Time();
-    this.size = new Size();
-    this.scene = new Scene();
-    this.camera = new Camera();
-    this.physics = new Physics();
-    this.inputManager = InputManager.getInstance();
-    this.resources = new Resources(sources);
+	private constructor() {
+		// GameObject를 초기화 할 경우 내부에서 동작하는 객체들에 대한 의존성의 순서를 고려하는 것이 중요하다.
+		this.debug = new Debug({ title: "Game Controller" })
+		this.time = new Time()
+		this.size = new Size()
+		this.scene = new Scene()
+		this.camera = new Camera()
+		this.physics = new Physics()
+		this.inputManager = InputManager.getInstance()
+		this.resources = new Resources(sources)
+		// Game 인스턴스에 직접 접근하지 않고 ServiceRegistry를 통해 접근할 수 있도록 GameContext를 제공한다.
+		this.registerAllServices()
 
-    // Game 인스턴스에 직접 접근하지 않고 ServiceRegistry를 통해 접근할 수 있도록 GameContext를 제공한다.
-    this.registerAllServices();
+		this.cssRenderer = new CSSRenderer()
+		this.terminalOverlay = new TerminalOverlay()
 
-    // Renderer 는 여러 객체에 의존성이 있으므로 가장 마지막에 초기화하는 것이 안전하다.
-    this.renderer = new Renderer();
-    this.registerRenderer();
-  }
+		// CSSRenderer가 생성된 후 다시 등록하여 완전한 상태를 유지한다.
+		ServiceRegistry.getInstance().register("cssRenderer", this.cssRenderer)
 
-  static getInstance(): Game {
-    if (!Game.instance) {
-      Game.instance = new Game();
-    }
-    return Game.instance;
-  }
+		// Renderer 는 여러 객체에 의존성이 있으므로 가장 마지막에 초기화하는 것이 안전하다.
+		this.renderer = new Renderer()
+		this.registerRenderer()
 
-  setPasses() {
-    this.passes = {
-      composer: new EffectComposer(this.renderer),
-      renderPass: new RenderPass(this.scene, this.camera.instance),
-      horizontalBlurPass: new ShaderPass(BlurPass),
-      verticalBlurPass: new ShaderPass(BlurPass),
-      glowsPass: new ShaderPass(GlowPass),
-    };
+		// Lighting 초기화 (Game 인스턴스 주입)
+		this.lighting = new Lighting(this)
+	}
 
-    this.passes.horizontalBlurPass.strength = 0;
-    this.passes.horizontalBlurPass.material.uniforms["uResolution"].value =
-      new THREE.Vector2(this.size.width, this.size.height);
-    this.passes.horizontalBlurPass.material.uniforms["uStrength"].value =
-      new THREE.Vector2(this.passes.horizontalBlurPass.strength, 0);
+	static getInstance(): Game {
+		if (!Game.instance) {
+			Game.instance = new Game()
+		}
+		return Game.instance
+	}
 
-    this.passes.verticalBlurPass.strength = 0;
-    this.passes.verticalBlurPass.material.uniforms["uResolution"].value =
-      new THREE.Vector2(this.size.width, this.size.height);
-    this.passes.verticalBlurPass.material.uniforms["uStrength"].value =
-      new THREE.Vector2(0, this.passes.verticalBlurPass.strength);
+	get orbitControls(): OrbitControls | undefined {
+		return this.camera.orbitControls
+	}
 
-    this.passes.glowsPass.color = "#ffcfe0";
-    this.passes.glowsPass.material.uniforms.uPosition.value = new THREE.Vector2(
-      0,
-      0.25
-    );
-    this.passes.glowsPass.material.uniforms.uRadius.value = 0.7;
-    this.passes.glowsPass.material.uniforms.uColor.value = new THREE.Color(
-      this.passes.glowsPass.color
-    );
-    this.passes.glowsPass.material.uniforms.uColor.value.convertLinearToSRGB();
-    this.passes.glowsPass.material.uniforms.uAlpha.value = 0.55;
+	private registerAllServices() {
+		const registry = ServiceRegistry.getInstance()
+		registry.register("game", this)
+		registry.register("debug", this.debug)
+		registry.register("time", this.time)
+		registry.register("size", this.size)
+		registry.register("scene", this.scene)
+		registry.register("camera", this.camera)
+		registry.register("physics", this.physics)
+		registry.register("inputManager", this.inputManager)
+		registry.register("resources", this.resources)
+		registry.register("cssRenderer", this.cssRenderer)
+		registry.register("lighting", this.lighting) // TBD: Register if needed, though property access exists
+	}
 
-    this.passes.composer.addPass(this.passes.renderPass);
-    this.passes.composer.addPass(this.passes.horizontalBlurPass);
-    this.passes.composer.addPass(this.passes.verticalBlurPass);
-    this.passes.composer.addPass(this.passes.glowsPass);
+	private registerRenderer() {
+		const registry = ServiceRegistry.getInstance()
+		registry.register("renderer", this.renderer)
+	}
 
-    this.size.on("resize", () => {
-      if (this.passes) {
-        this.renderer.setSize(this.size.width, this.size.height);
-        this.passes.composer.setSize(this.size.width, this.size.height);
-        this.passes.horizontalBlurPass.material.uniforms.uResolution.value.x =
-          this.size.width;
-        this.passes.horizontalBlurPass.material.uniforms.uResolution.value.y =
-          this.size.height;
-        this.passes.verticalBlurPass.material.uniforms.uResolution.value.x =
-          this.size.width;
-        this.passes.verticalBlurPass.material.uniforms.uResolution.value.y =
-          this.size.height;
-      }
-    });
-  }
+	addGameObject(obj: IGameObject): void {
+		this.gameObjects.push(obj)
+		if (this.isInitialized) {
+			obj.initialize?.(this.getContext())
+		}
+	}
 
-  private registerAllServices() {
-    const registry = ServiceRegistry.getInstance();
-    registry.register("game", this);
-    registry.register("debug", this.debug);
-    registry.register("time", this.time);
-    registry.register("size", this.size);
-    registry.register("scene", this.scene);
-    registry.register("camera", this.camera);
-    registry.register("physics", this.physics);
-    registry.register("inputManager", this.inputManager);
-    registry.register("resources", this.resources);
-  }
+	addController(controller: IController): void {
+		this.controllers.push(controller)
+	}
 
-  private registerRenderer() {
-    const registry = ServiceRegistry.getInstance();
-    registry.register("renderer", this.renderer);
-  }
+	removeController(controller: IController): void {
+		const index = this.controllers.indexOf(controller)
+		if (index > -1) {
+			this.controllers.splice(index, 1)
+		}
+	}
 
-  addGameObject(obj: IGameObject): void {
-    this.gameObjects.push(obj);
-    if (this.isInitialized) {
-      obj.initialize?.(this.getContext());
-    }
-  }
+	getContext(): GameContext {
+		return {
+			renderer: this.renderer,
+			scene: this.scene,
+			camera: this.camera,
+			physics: this.physics,
+			time: this.time,
+			size: this.size,
+			debug: this.debug,
+			inputManager: this.inputManager,
+			resources: this.resources,
+		}
+	}
 
-  addController(controller: IController): void {
-    this.controllers.push(controller);
-  }
+	getService<T>(key: string): T {
+		return ServiceRegistry.getInstance().get<T>(key)
+	}
 
-  removeController(controller: IController): void {
-    const index = this.controllers.indexOf(controller);
-    if (index > -1) {
-      this.controllers.splice(index, 1);
-    }
-  }
+	get sceneObjects() {
+		return [
+			new Floor(200),
+			// new Planet(new THREE.Vector3(0, 10, 0)),
+			// new Atmosphere(new THREE.Vector3(0, 10, 0)),
+			// new Rocks(new THREE.Vector3(0, 10, 0)),
+			// new TreeLights(new THREE.Vector3(0, 10, 0)),
+			// new Birds()
+		]
+	}
 
-  getContext(): GameContext {
-    return {
-      renderer: this.renderer,
-      scene: this.scene,
-      camera: this.camera,
-      physics: this.physics,
-      time: this.time,
-      size: this.size,
-      debug: this.debug,
-      inputManager: this.inputManager,
-      resources: this.resources,
-    };
-  }
+	async initialize() {
+		if (this.isInitialized) {
+			return
+		}
 
-  getService<T>(key: string): T {
-    return ServiceRegistry.getInstance().get<T>(key);
-  }
+		await RAPIER.init()
+		await this.physics.initialize()
 
-  get orbitControls(): OrbitControls | undefined {
-    return this.camera.orbitControls;
-  }
+		// 리소스 로딩 완료까지 대기
+		await this.resources.waitForReady()
 
-  async initialize() {
-    if (this.isInitialized) return;
+		await this.renderer.initialize()
 
-    await RAPIER.init();
-    await this.physics.initialize();
+		// Lighting 초기화
+		this.lighting.initialize()
 
-    // 리소스 로딩 완료까지 대기
-    await this.resources.waitForReady();
+		// 1. 핵심 객체들 먼저 초기화
+		const context = this.getContext()
 
-    await this.renderer.initialize();
+		for (const obj of this.sceneObjects) {
+			await obj.initialize(context)
+			this.addGameObject(obj)
+		}
 
-    const spaceShip = new SpaceShip();
-    const floor = new Floor(200);
-    const rocks = new Rocks(new THREE.Vector3(0, 0, 0));
-    const area = new Area();
-    const planet = new Planet(new THREE.Vector3(0, 4, 0));
-    const atmosphere = new Atmosphere(new THREE.Vector3(0, 4, 0));
-    const land = new Land(new THREE.Vector3(0, 0, 0));
-    const engineFlame = new EngineFlame(new THREE.Vector3(0, 2, 5));
+		const spaceShip = new SpaceShip()
+		await spaceShip.initialize(context)
+		this.addGameObject(spaceShip)
 
-    // this.addGameObject(spaceShip);
-    // this.addGameObject(floor);
-    // this.addGameObject(rocks);
-    this.addGameObject(area);
-    // this.addGameObject(planet);
-    // this.addGameObject(atmosphere);
-    // this.addGameObject(land);
-    this.addGameObject(engineFlame);
+		const ballColors = [
+			"#E7E7E7",
+			"#FF7400",
+			"#FF0009",
+			"#5A666B",
+			"#FFE575",
+			"#615C49",
+			"#A7A083",
+			"#FF1A17",
+		]
 
-    const context = this.getContext();
-    await this.camera.initialize(context);
-    this.setPasses();
+		const ballData = ballColors.map((color, index) => ({
+			position: new THREE.Vector3((index - 3.5) * 2.5, 1, -5), // Offset Z to not overlap with boxes, spread on X
+			color: color,
+		}))
 
-    for (const obj of this.gameObjects) {
-      await obj.initialize?.(context);
-    }
+		const boxData = ballColors.map((color, index) => ({
+			position: new THREE.Vector3((index - 3.5) * 2.5, 1, -2.5), // Offset Z to not overlap with boxes, spread on X
+			color: color,
+		}))
 
-    this.setupInputSystem();
-    this.setupEnvironment();
-    this.setupEvents();
+		ballData.forEach(({ position, color }) => {
+			const ball = Basic.Balls.initialize(position, color)
+			this.scene.add(ball)
+		})
 
-    this.isInitialized = true;
-  }
+		boxData.forEach(({ position, color }) => {
+			const box = Basic.Box.initialize(position, color)
+			this.scene.add(box)
+		})
 
-  start() {
-    if (!this.isInitialized) {
-      throw new Error("Game must be initialized before starting");
-    }
-    this.time.startGameLoop();
-  }
+		// 2. 포트폴리오 프로젝트들 생성 및 초기화
+		const projectRegistry = ProjectRegistry.getInstance()
+		const projects = projectRegistry.getProjects()
 
-  private setupEnvironment() {
-    // HDR 환경 설정, 조명 등
-    // 기존 main.ts의 환경 설정 코드를 여기로 이동
-  }
+		for (const projectData of projects) {
+			const outpost = new ProjectOutpost(projectData)
 
-  private setupInputSystem() {
-    const movementProcessor = new Vector2Processor("movement", {
-      upKey: "KeyW",
-      downKey: "KeyS",
-      leftKey: "KeyA",
-      rightKey: "KeyD",
-    });
-    this.inputManager.addProcessor(movementProcessor);
+			// 우주선이 초기화된 후이므로 rigidBody가 존재함
+			outpost.setTrackingTarget(spaceShip.rigidBody)
 
-    // 플레이어 비행 액션 매퍼 등록
-    // 현재 등록되어 있는 FlightActionMapper 에는 KeyWASD 기반 움직임이 포함되어 있음
-    // 필요시 별도의 매퍼를 만들어 등록 가능
-    const flightMapper = new FlightActionMapper();
-    this.inputManager.addActionMapper(flightMapper);
-  }
+			await outpost.initialize(context)
+			this.addGameObject(outpost)
+			this.projectOutposts.push(outpost)
+		}
 
-  private setupEvents() {
-    this.time.on("tick", () => this.update());
-    this.size.on("resize", () => this.resize());
-  }
+		await this.camera.initialize(context)
+		this.renderer.setPostProcessing(context)
 
-  private update() {
-    const deltaTime = this.time.delta;
-    this.inputManager.update();
-    this.physics.step();
-    // 등록되어 있는 모든 게임 오브젝트와 컨트롤러 업데이트(ex, 우주선, 카메라 등)
-    this.gameObjects.forEach((obj) => obj.update(deltaTime));
-    this.controllers.forEach((controller) => {
-      if (controller.enabled) {
-        controller.update();
-      }
-    });
+		// Loop removed to prevent double initialization.
+		// Objects added via addGameObject during initialize() are explicitly initialized above.
 
-    this.camera.orbitControls?.update(deltaTime);
-    this.physics.update();
+		this.setupInputSystem()
+		this.setupEnvironment()
+		this.setupEvents()
 
-    if (this.passes) {
-      this.passes.horizontalBlurPass.enabled =
-        this.passes.horizontalBlurPass.material.uniforms.uStrength.value.x > 0;
-      this.passes.verticalBlurPass.enabled =
-        this.passes.verticalBlurPass.material.uniforms.uStrength.value.y > 0;
+		this.isInitialized = true
+	}
 
-      this.passes.composer.render();
-    }
-  }
+	start() {
+		if (!this.isInitialized) {
+			throw new Error("Game must be initialized before starting")
+		}
+		this.time.startGameLoop()
+	}
 
-  private resize() {
-    this.controllers.forEach((controller) => controller.update?.());
-  }
+	private setupEnvironment() {
+		// Lighting handles directional light and ambient light (if configured there, otherwise keep ambient here or move to Lighting)
+		// Removed manual DirectionalLight setup as Lighting class handles it.
+		// const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+		// this.scene.add(ambientLight)
+	}
+
+	private setupInputSystem() {
+		const movementProcessor = new Vector2Processor("movement", {
+			upKey: "KeyW",
+			downKey: "KeyS",
+			leftKey: "KeyA",
+			rightKey: "KeyD",
+		})
+		this.inputManager.addProcessor(movementProcessor)
+
+		// 플레이어 비행 액션 매퍼 등록
+		// 현재 등록되어 있는 FlightActionMapper 에는 KeyWASD 기반 움직임이 포함되어 있음
+		// 필요시 별도의 매퍼를 만들어 등록 가능
+		const flightMapper = new FlightActionMapper()
+		this.inputManager.addActionMapper(flightMapper)
+	}
+
+	private setupEvents() {
+		this.time.on("tick", () => this.update())
+		this.size.on("resize", () => this.resize())
+
+		// 키보드 인터랙션 이벤트 (E 키)
+		this.inputManager.on("input.keydown", (data: InputEventData) => {
+			if (data?.key?.code === "KeyE") {
+				this.handleInteraction()
+			}
+		})
+	}
+
+	private handleInteraction() {
+		// 이미 터미널이 열려있으면 닫기 (또는 무시)
+		if (this.terminalOverlay.isOpen) {
+			this.terminalOverlay.hide()
+			return
+		}
+
+		// 현재 우주선이 트리거 내부에 있는 프로젝트 찾기
+		const activeOutpost = this.projectOutposts.find((p) => p.isInside)
+		if (activeOutpost) {
+			this.terminalOverlay.show(activeOutpost.data)
+		}
+	}
+
+	private async update() {
+		if (this.isRendering) {
+			return
+		}
+
+		this.isRendering = true
+		const deltaTime = this.time.delta
+		this.inputManager.update()
+		this.physics.step()
+
+		// Update Lighting
+		this.lighting.update()
+
+		// 등록되어 있는 모든 게임 오브젝트와 컨트롤러 업데이트(ex, 우주선, 카메라 등)
+		this.gameObjects.forEach((obj) => {
+			obj.update(deltaTime)
+		})
+		this.controllers.forEach((controller) => {
+			if (controller.enabled) {
+				controller.update()
+			}
+		})
+		this.camera.orbitControls?.update(deltaTime)
+		this.physics.update()
+
+		await this.renderer.update()
+		if (this.cssRenderer && this.scene && this.camera.instance) {
+			await this.cssRenderer.render(this.scene, this.camera.instance)
+		}
+		this.isRendering = false
+	}
+
+	private resize() {
+		this.controllers.forEach((controller) => {
+			controller.update?.()
+		})
+	}
 }

@@ -42,3 +42,10 @@ Thumbs.db
 *.tmp
 *.temp
 .tmp/
+
+dist
+
+folio-2025
+folio-2025/*
+three.js.wiki
+three.js.wiki/*
