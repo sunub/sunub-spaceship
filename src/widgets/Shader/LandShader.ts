@@ -1,6 +1,5 @@
-
+import fragmentShader from "./land/fragment.glsl?raw"
 // @ts-nocheck
-import vertexShader from './land/vertex.glsl?raw';
-import fragmentShader from './land/fragment.glsl?raw';
+import vertexShader from "./land/vertex.glsl?raw"
 
-export { vertexShader, fragmentShader };
+export { vertexShader, fragmentShader }
