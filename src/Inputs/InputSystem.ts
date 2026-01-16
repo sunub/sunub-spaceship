@@ -6,12 +6,12 @@ export { FlightActionMapper } from "./mappers/FlightActionMapper"
 export { Vector2Processor } from "./processors/Vector2Processor"
 // 타입들 내보내기
 export type {
-	FlightActions,
-	IActionMapper,
-	IInputProcessor,
-	InputEventData,
-	InputMap,
-	InputMaps,
-	KeyboardKeys,
-	Vector2,
+    FlightActions,
+    IActionMapper,
+    IInputProcessor,
+    InputEventData,
+    InputMap,
+    InputMaps,
+    KeyboardKeys,
+    Vector2,
 } from "./types"
