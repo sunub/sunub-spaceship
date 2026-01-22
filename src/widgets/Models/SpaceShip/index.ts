@@ -1,12 +1,11 @@
 export { SpaceShipCameraDebugModule } from "./debug/SpaceShip.CameraDebug"
 
-// Debug Modules
 export {
-	type SpaceShipPositionDebugContext,
-	SpaceShipPositionDebugModule,
+    type SpaceShipPositionDebugContext,
+    SpaceShipPositionDebugModule,
 } from "./debug/SpaceShip.PositionDebug"
 export {
-	type SpaceShipVisualDebugContext,
-	SpaceShipVisualDebugModule,
+    type SpaceShipVisualDebugContext,
+    SpaceShipVisualDebugModule,
 } from "./debug/SpaceShip.VisualDebug"
 export { SpaceShip } from "./model/SpaceShip"
