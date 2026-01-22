@@ -1,182 +1,168 @@
-import * as THREE from "three"
-import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js"
+import { EXRLoader } from "three/examples/jsm/Addons.js"
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
-import EventEmitter from "./EventEmitter"
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js"
+import * as THREE from "three/webgpu"
+import { ServiceRegistry } from "@/core/ServiceRegistry"
+import { HDRLoader } from "./HDRLoader.js"
 
-interface Source
-{
-	name: string
-	type: string
-	path: string | string[]
-}
+export type LoaderType =
+    | "gltfModel"
+    | "texture"
+    | "cubeTexture"
+    | "textureKtx"
+    | "draco"
+    | "hdr"
+    | "exr"
+    | "jpg"
+    | "png"
+    | "ktx2"
+    | "font"
 
-interface Loaders
-{
-	gltfLoader?: GLTFLoader
-	dracoLoader?: DRACOLoader
-	textureLoader?: THREE.TextureLoader
-	cubeTextureLoader?: THREE.CubeTextureLoader
-}
+export type Source = [string, LoaderType, string, ((resource: any) => void)?]
 
-interface Items
-{
-	[key: string]: any
-}
+export default class Resources {
+    private loaders = new Map<string, any>()
+    public items: Record<string, any> = {}
+    private registry: ServiceRegistry
+    private static ktx2Loader: KTX2Loader | null = null
 
-export default class Resources extends EventEmitter
-{
-	sources: Source[]
-	loaders!: Loaders
-	items: Items
-	toLoad: number
-	loaded: number
+    constructor() {
+        this.registry = ServiceRegistry.getInstance()
+    }
 
-	constructor(sources: Source[])
-	{
-		super()
-		this.sources = sources
+    public async load(
+        sources: Source[],
+        onProgress?: (loaded: number, total: number) => void,
+    ): Promise<Record<string, any>> {
+        const loadedResources: Record<string, any> = {}
+        const toLoad = sources.length
+        let loadedCount = 0
 
-		this.items = {}
-		this.toLoad = this.sources.length
-		this.loaded = 0
+        const getRenderer = () => {
+            try {
+                return this.registry.get<THREE.WebGPURenderer>("renderer")
+            } catch (_) {
+                console.warn(
+                    "Resources: Renderer not found in registry, KTX2Loader might fail if not initialized.",
+                )
+                return undefined
+            }
+        }
 
-		this.setLoaders()
-		this.startLoading()
-	}
+        const sourcesPromise = sources.map(async (source) => {
+            const [name, type, path, callback] = source
 
-	setLoaders()
-	{
-		this.loaders = {}
+            if (this.items[name]) {
+                loadedResources[name] = this.items[name]
+                loadedCount++
+                onProgress?.(loadedCount, toLoad)
+                return
+            }
 
-		// GLTF 로더 설정
-		this.loaders.gltfLoader = new GLTFLoader()
-		this.loaders.dracoLoader = new DRACOLoader()
-		this.loaders.dracoLoader.setDecoderPath(
-			"https://www.gstatic.com/draco/v1/decoders/",
-		)
-		this.loaders.gltfLoader.setDRACOLoader(this.loaders.dracoLoader)
+            const loader = this.getLoader(type, getRenderer())
 
-		// 텍스처 로더들 설정
-		this.loaders.textureLoader = new THREE.TextureLoader()
-		this.loaders.cubeTextureLoader = new THREE.CubeTextureLoader()
-	}
+            if (!loader) {
+                console.warn(`Resources: No loader found for type ${type}`)
+                loadedCount++
+                onProgress?.(loadedCount, toLoad)
+                return
+            }
 
-	startLoading()
-	{
-		for (const source of this.sources)
-		{
-			switch (source.type)
-			{
-				case "gltfModel":
-					this.loadGltfSource(source)
-					break
-				case "texture":
-					this.loadTextureSource(source)
-					break
-				case "cubeTexture":
-					this.loadCubeTextureSource(source)
-					break
-				default:
-					console.warn(`Unknown source type: ${source.type}`)
-			}
-		}
-	}
+            try {
+                const file = await new Promise((resolve, reject) => {
+                    if (type === "cubeTexture") {
+                        loader.load([path], resolve, undefined, reject)
+                    } else {
+                        loader.load(path, resolve, undefined, reject)
+                    }
+                })
 
-	loadGltfSource(source: Source)
-	{
-		if (!this.loaders.gltfLoader)
-		{
-			this.setLoaders()
-		}
-		this.loaders.gltfLoader?.load(source.path as string, (file) =>
-		{
-			this.sourceLoaded(source, file)
-		})
-	}
+                if (callback) callback(file)
+                loadedResources[name] = file
+                this.items[name] = file
+            } catch (error) {
+                console.error(
+                    `Resources: Failed to load ${name} at ${path}`,
+                    error,
+                )
+            } finally {
+                loadedCount++
+                onProgress?.(loadedCount, toLoad)
+            }
+        })
+        await Promise.all(sourcesPromise)
+        return loadedResources
+    }
 
-	loadTextureSource(source: Source)
-	{
-		if (!this.loaders.textureLoader)
-		{
-			this.setLoaders()
-		}
-		this.loaders.textureLoader?.load(
-			source.path as string,
-			(texture) =>
-			{
-				this.sourceLoaded(source, texture)
-			},
-			undefined,
-			(error) =>
-			{
-				console.error(`Failed to load texture: ${source.name}`, error)
-			},
-		)
-	}
+    private getSharedKTX2Loader(renderer?: THREE.WebGPURenderer) {
+        if (!Resources.ktx2Loader) {
+            Resources.ktx2Loader = new KTX2Loader()
+            Resources.ktx2Loader.setTranscoderPath("/basis/")
+            if (renderer) {
+                Resources.ktx2Loader.detectSupport(renderer)
+            }
+        }
+        return Resources.ktx2Loader
+    }
 
-	loadCubeTextureSource(source: Source)
-	{
-		if (!this.loaders.cubeTextureLoader)
-		{
-			this.setLoaders()
-		}
-		this.loaders.cubeTextureLoader?.load(
-			source.path as string[],
-			(texture) =>
-			{
-				this.sourceLoaded(source, texture)
-			},
-			undefined,
-			(error) =>
-			{
-				console.error(
-					`Failed to load cube texture: ${source.name}`,
-					error,
-				)
-			},
-		)
-	}
+    private getLoader(type: LoaderType, renderer?: THREE.WebGPURenderer) {
+        if (this.loaders.has(type)) return this.loaders.get(type)
 
-	sourceLoaded<T>(source: Source, file: T)
-	{
-		this.items[source.name] = file
-		this.loaded++
+        let loader: any
 
-		if (this.loaded === this.toLoad)
-		{
-			this.trigger("ready")
-		}
-	}
+        switch (type) {
+            case "gltfModel": {
+                const gltfLoader = new GLTFLoader()
+                const dracoLoader = new DRACOLoader()
+                dracoLoader.setDecoderPath("/draco/")
+                gltfLoader.setDRACOLoader(dracoLoader)
 
-	// 모델 접근을 위한 헬퍼 메서드들
-	getModel(name: string): THREE.Group | null
-	{
-		const item = this.items[name]
-		return item?.scene || null
-	}
+                const ktx2Loader = this.getSharedKTX2Loader(renderer)
+                gltfLoader.setKTX2Loader(ktx2Loader)
 
-	getTexture(name: string): THREE.Texture | null
-	{
-		return this.items[name] || null
-	}
+                loader = gltfLoader
+                break
+            }
 
-	hasResource(name: string): boolean
-	{
-		return Object.hasOwn(this.items, name)
-	}
+            case "jpg":
+                loader = new THREE.TextureLoader()
+                break
 
-	// 리소스가 로드될 때까지 대기하는 Promise 메서드
-	waitForReady(): Promise<void>
-	{
-		return new Promise((resolve) =>
-		{
-			if (this.loaded === this.toLoad)
-			{
-				resolve()
-			} else
-			{
-				this.on("ready", () => resolve())
-			}
-		})
-	}
+            case "png":
+                loader = new THREE.TextureLoader()
+                break
+
+            case "draco":
+                loader = new DRACOLoader()
+                loader.setDecoderPath("/draco/")
+                break
+
+            case "texture":
+                loader = new THREE.TextureLoader()
+                break
+
+            case "exr":
+                loader = new EXRLoader()
+                break
+
+            case "ktx2":
+                loader = this.getSharedKTX2Loader(renderer)
+                break
+
+            case "cubeTexture":
+                loader = new THREE.CubeTextureLoader()
+                break
+
+            case "hdr":
+                loader = new HDRLoader()
+                break
+        }
+
+        if (loader) {
+            this.loaders.set(type, loader)
+        }
+
+        return loader
+    }
 }
