@@ -5,21 +5,24 @@ import { Game } from "@/widgets/Game"
 import { entrySources, modelSources, textureSources } from "../../sources"
 import type { GameContext } from "../GameContext"
 import { Atmosphere } from "./model/Atmosphere"
-import { AtmosphereCrystal } from "./model/AtmosphereCrystal"
 import { AtmosphereLand } from "./model/AtmosphereLand/AtmosphereLand"
 import { AtmosphereTreeLights } from "./model/AtmosphereTreeLights"
 import { Background } from "./model/Background"
 import { LoadingAnimation } from "./model/LoadingAnimation"
 import { Planet } from "./model/Planet"
+import type { Audio } from "@/widgets/Audio"
 
 export class Entry extends EventEmitter {
     private resources: Resources
     private game: Game
+    private loadingAnimation!: LoadingAnimation
+    private audio: Audio
 
     constructor(private context: GameContext) {
         super()
         this.resources = this.context.resources
         this.game = Game.getInstance()
+        this.audio = this.context.audio
     }
 
     async init() {
@@ -28,10 +31,9 @@ export class Entry extends EventEmitter {
         await this.settingEntryScene()
         this.loadRemainingAssets()
         this.spawn()
-        this.createEnterButton()
     }
 
-    public async loadRemainingAssets() {
+    private async loadRemainingAssets() {
         let loadedCount = 0
         const totalCount = modelSources.length + textureSources.length
         const gameLoader = document.getElementById(
@@ -43,6 +45,9 @@ export class Entry extends EventEmitter {
             if (gameLoader) {
                 gameLoader.removeAttribute("indeterminate")
                 gameLoader.value = loadedCount / totalCount
+            }
+            if (loadedCount >= 1) {
+                this.loadingAnimation.setLoaded()
             }
         }
 
@@ -68,35 +73,20 @@ export class Entry extends EventEmitter {
         await this.game.prepareGameObjects()
 
         this.emit("resourcesLoaded")
-        console.log("resourcesLoaded")
     }
 
-    public spawn() {
+    private spawn() {
         this.on("resourcesLoaded", async () => {
             await this.game.settingEnvironment()
-            this.emit("spawn")
+            this.activateEnterButton()
         })
     }
 
-    public createEnterButton() {
-        this.on("spawn", () => {
-            const html = `
-        <button id="entry-button">Enter</button>
-      `
-
-            const entrySceneDOM = document.querySelector(".entry-screen")
-            if (entrySceneDOM) {
-                entrySceneDOM.insertAdjacentHTML("beforeend", html)
-            }
-
-            const button = document.querySelector("#entry-button")
-            if (button) {
-                button.addEventListener("click", () => {
-                    this.game.startGame()
-                    this.dispose()
-                })
-            }
-        })
+    public activateEnterButton() {
+        const button = document.getElementById("entry-button")
+        if (button) {
+            button.removeAttribute("disabled")
+        }
     }
 
     public dispose() {
@@ -118,18 +108,11 @@ export class Entry extends EventEmitter {
         await this.context.camera.initialize(this.context)
 
         this.context.lighting.initialize()
-        console.log(this.context.camera.instance)
-        this.context.camera.transitionTo(
-            "entry",
-            new Vector3(0, 0, 10),
-            new Vector3(0, 39, 0),
-            0,
-        )
-
-        for (const obj of this.sceneObjects) {
+        const object_initializers_promises = this.sceneObjects.map(async (obj) => {
             await obj.initialize(this.context)
             this.game.addGameObject(obj)
-        }
+        })
+        await Promise.all(object_initializers_promises)
 
         this.context.rendering.setPostProcessing()
         this.game.setupEvents()
@@ -138,28 +121,14 @@ export class Entry extends EventEmitter {
     }
 
     public createLoadingLoader() {
-        const html = `
-      <main id="loading-zone" aria-busy="true">
-        <p>Loading Level</p>
-        <div class="loading-container">
-          <span id="loading-label" class="sr-only">Loading progress</span>
+        const button = document.querySelector("#entry-button")
+        if (button) {
+            button.addEventListener("click", () => {
+                this.audio.play('button')
 
-          <progress
-            id="game-loader"
-            indeterminate
-            aria-labelledby="loading-label"
-            aria-describedby="loading-zone"
-            tabindex="-1"
-          >
-            unknown
-          </progress>
-        </div>
-      </main>
-    `
-
-        const entrySceneDOM = document.querySelector(".entry-screen")
-        if (entrySceneDOM) {
-            entrySceneDOM.insertAdjacentHTML("beforeend", html)
+                this.game.startGame()
+                this.dispose()
+            })
         }
     }
 
@@ -167,13 +136,14 @@ export class Entry extends EventEmitter {
         const objects_pos = new Vector3(0, 40, 0)
         const objects_scale = new Vector3(0.5, 0.5, 0.5)
 
+        this.loadingAnimation = new LoadingAnimation(objects_pos)
+
         return [
+            this.loadingAnimation,
             new Planet(objects_pos, objects_scale),
             new Atmosphere(objects_pos, objects_scale),
             new AtmosphereLand(objects_pos, objects_scale),
-            new AtmosphereCrystal(objects_pos, objects_scale),
             new AtmosphereTreeLights(objects_pos, objects_scale),
-            new LoadingAnimation(objects_pos),
             new Background(this.context),
         ]
     }
