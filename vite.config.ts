@@ -2,10 +2,12 @@ import path from "path"
 import { visualizer } from "rollup-plugin-visualizer"
 import { defineConfig } from "vite"
 import glsl from "vite-plugin-glsl"
+import { nodePolyfills } from "vite-plugin-node-polyfills"
+import wasm from 'vite-plugin-wasm'
 
 // https://vite.dev/config/
 export default defineConfig({
-	plugins: [visualizer(), glsl()],
+	plugins: [visualizer(), glsl(), nodePolyfills(), wasm()],
 	base: "/",
 	assetsInclude: ["**/*.glb", "**/*.hdr", "**/*.gltf", "**/*.bin"],
 	resolve: {

@@ -3,29 +3,41 @@
 		"target": "ES2022",
 		"useDefineForClassFields": true,
 		"module": "ESNext",
-		"lib": ["ES2022", "ES2022.Error", "DOM", "DOM.Iterable"],
+		"lib": [
+			"ES2022",
+			"ES2022.Error",
+			"DOM",
+			"DOM.Iterable"
+		],
 		"skipLibCheck": true,
 		"baseUrl": ".",
-
 		/* Bundler mode */
 		"moduleResolution": "bundler",
+		"allowJs": true,
 		"allowImportingTsExtensions": true,
 		"verbatimModuleSyntax": true,
 		"moduleDetection": "force",
 		"noEmit": true,
-
 		/* Linting */
 		"strict": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true,
-
 		"experimentalDecorators": true,
 		"emitDecoratorMetadata": true,
 		"paths": {
-			"@/*": ["./src/*"]
+			"@/*": [
+				"./src/*"
+			]
 		},
-		"types": ["vite-plugin-glsl/ext"]
+		"types": [
+			"node",
+			"vite-plugin-glsl/ext"
+		]
 	},
-	"include": ["src", "src/types", "src/**/*.d.ts"]
+	"include": [
+		"src",
+		"src/types",
+		"src/**/*.d.ts",
+	]
 }

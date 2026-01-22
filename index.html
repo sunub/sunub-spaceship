@@ -4,10 +4,52 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
-  </head>
-  <body>
-    <div id="root">
+    <title>sun_ub🌌</title>
+    <style>
+
+    </style>
+    <link rel="stylesheet" href="./src/style.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body>
+    <div class="root">
+      <canvas class="canvas"></canvas>
+    </div>
+    <div class="entry-screen">
+      <main id="loading-zone" aria-busy="true">
+        <p>Loading Level</p>
+        <div class="loading-container">
+          <span id="loading-label" class="sr-only">Loading progress</span>
+
+          <progress
+            id="game-loader"
+            indeterminate
+            aria-labelledby="loading-label"
+            aria-describedby="loading-zone"
+            tabindex="-1"
+          >
+            unknown
+          </progress>
+        </div>
+
+      </main>
+      <button id="entry-button" disabled="true" class="warp-button">Enter</button>
+    </div>
+    <div class="audio-panel">
+        <button class="mute-btn" onclick="toggleMute(this)">
+            <span class="material-symbols-outlined">volume_up</span>
+        </button>
+
+        <div class="slider-wrapper">
+            <div class="wave-origin" id="wave-origin" style="left: 70%;">
+                <div class="wave-circle wave-1"></div>
+                <div class="wave-circle wave-2"></div>
+                <div class="wave-circle wave-3"></div>
+                <div class="wave-circle wave-4"></div>
+            </div>
+            <input type="range" class="volume-input"
+                   min="0" max="100" value="70" >
+        </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
