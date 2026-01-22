@@ -1,173 +1,233 @@
-import * as THREE from "three/webgpu"
+import { MeshSurfaceSampler } from "three/examples/jsm/math/MeshSurfaceSampler.js"
+import {
+    BufferAttribute,
+    InstancedBufferAttribute,
+    InstancedBufferGeometry,
+    Matrix4,
+    Mesh,
+    Object3D,
+    Sphere,
+    Vector3,
+} from "three/webgpu"
+import type { GameContext } from "@/core/GameContext"
 import { GrassMaterial } from "@/widgets/Materials/GrassMaterial"
 import type { GrassMaterialOptions } from "@/widgets/Materials/GrassMaterial/GrassMaterial"
+import { TweakPane } from "@/widgets/TweakPane"
+import { BaseModel } from "../BaseModel"
 
 export interface GrassOptions extends GrassMaterialOptions {
-	count?: number
-	areaSize?: number
+    count?: number
 }
 
-export class Grass {
-	mesh: THREE.Mesh | null = null
-	geometry: THREE.InstancedBufferGeometry | null = null
-	material: GrassMaterial | null = null
+export class Grass extends BaseModel {
+    public grassMaterial: GrassMaterial | null = null
+    private grassMesh: Mesh | null = null
+    private sampler: MeshSurfaceSampler | null = null
 
-	public params: Required<GrassOptions> = {
-		width: 0.1,
-		height: 1.0,
-		segments: 5,
-		patchSize: 1.0,
-		count: 20000,
-		areaSize: 200.0,
-		interactionRadius: 3.0,
-	}
+    public params: Required<GrassOptions> = {
+        width: 0.1,
+        height: 1.0,
+        segments: 5,
+        patchSize: 1.0,
+        count: 20000,
+        interactionRadius: 3.0,
+    }
 
-	private time: number = 0
+    private time: number = 0
 
-	constructor(options: GrassOptions = {}) {
-		this.params = { ...this.params, ...options }
-		this.init()
-	}
+    constructor(options: GrassOptions = {}) {
+        super("grassModel")
+        this.params = { ...this.params, ...options }
+    }
 
-	private init() {
-		this.setGeometry()
-		this.setMaterial()
-		this.setMesh()
-	}
+    protected setupModelStructure(clonedModel: Object3D): void {
+        this.modelGroup = new Object3D()
+        this.modelGroup.name = `${this.modelName}Group`
 
-	private setGeometry() {
-		const segments = this.params.segments
-		const vertices = (segments + 1) * 2
-		const indices: number[] = []
+        let surfaceMesh: Mesh | null = null
 
-		for (let i = 0; i < segments; ++i) {
-			const vi = i * 2
-			indices[i * 12 + 0] = vi + 0
-			indices[i * 12 + 1] = vi + 1
-			indices[i * 12 + 2] = vi + 2
+        clonedModel.traverse((child) => {
+            if ((child as Mesh).isMesh) {
+                surfaceMesh = child as Mesh
+            }
+        })
 
-			indices[i * 12 + 3] = vi + 2
-			indices[i * 12 + 4] = vi + 1
-			indices[i * 12 + 5] = vi + 3
+        if (!surfaceMesh) {
+            console.error("Grass: No mesh found in grassModel for sampling.")
+            return
+        }
 
-			const fi = vertices + vi
-			indices[i * 12 + 6] = fi + 2
-			indices[i * 12 + 7] = fi + 1
-			indices[i * 12 + 8] = fi + 0
+        // Create Sampler
+        this.sampler = new MeshSurfaceSampler(surfaceMesh as Mesh).build()
 
-			indices[i * 12 + 9] = fi + 3
-			indices[i * 12 + 10] = fi + 1
-			indices[i * 12 + 11] = fi + 2
-		}
+        this.initGrass(surfaceMesh as Mesh)
 
-		this.geometry = new THREE.InstancedBufferGeometry()
-		this.geometry.instanceCount = 0
-		this.geometry.setIndex(indices)
-		// Use WebGPU specific classes if needed, but standard geometry works
-		this.geometry.boundingSphere = new THREE.Sphere(
-			new THREE.Vector3(0, 0, 0),
-			Infinity,
-		)
+        if (this.grassMesh) {
+            this.modelGroup.add(this.grassMesh)
+        }
+    }
 
-		const positions = new Float32Array(this.params.count * 3)
-		this.geometry.setAttribute(
-			"aInstancePosition",
-			new THREE.InstancedBufferAttribute(positions, 3),
-		)
-	}
+    private initGrass(surfaceMesh: Mesh) {
+        this.setGeometry()
+        this.setMaterial()
 
-	private setMaterial() {
-		this.material = new GrassMaterial({
-			segments: this.params.segments,
-			patchSize: this.params.patchSize,
-			width: this.params.width,
-			height: this.params.height,
-			interactionRadius: this.params.interactionRadius,
-		})
-	}
+        if (this.geometry && this.grassMaterial) {
+            this.grassMesh = new Mesh(this.geometry, this.grassMaterial)
+            this.grassMesh.frustumCulled = false
+            this.grassMesh.castShadow = true
+            this.grassMesh.receiveShadow = true
 
-	private setMesh() {
-		if (this.geometry && this.material) {
-			this.mesh = new THREE.Mesh(this.geometry, this.material)
-			this.mesh.frustumCulled = false
-		}
-	}
+            this.plantGrass(surfaceMesh)
+        }
+    }
 
-	update(deltaTime: number, playerPosition?: THREE.Vector3) {
-		this.time += deltaTime
-		if (this.material) {
-			this.material.time = this.time * 0.001
+    private geometry: InstancedBufferGeometry | null = null
 
-			if (playerPosition) {
-				this.material.playerPosition = playerPosition
-			}
-		}
-	}
+    private setGeometry() {
+        const segments = this.params.segments
+        const vertices = (segments + 1) * 2
+        const indices: number[] = []
 
-	updateInteractionRadius(radius: number) {
-		this.params.interactionRadius = radius
-		if (this.material) {
-			this.material.interactionRadius = radius
-		}
-	}
+        for (let i = 0; i < segments; ++i) {
+            const vi = i * 2
+            indices[i * 12 + 0] = vi + 0
+            indices[i * 12 + 1] = vi + 1
+            indices[i * 12 + 2] = vi + 2
 
-	updateParams(params: Partial<GrassOptions>) {
-		this.params = { ...this.params, ...params }
-		if (this.material) {
-			this.material.setGrassParams(
-				this.params.segments,
-				this.params.patchSize,
-				this.params.width,
-				this.params.height,
-			)
-		}
-	}
+            indices[i * 12 + 3] = vi + 2
+            indices[i * 12 + 4] = vi + 1
+            indices[i * 12 + 5] = vi + 3
 
-	plantAtPositions(
-		locations: { x: number; z: number }[],
-		densityPerPatch: number = 20,
-	) {
-		if (!this.geometry) return
+            const fi = vertices + vi
+            indices[i * 12 + 6] = fi + 2
+            indices[i * 12 + 7] = fi + 1
+            indices[i * 12 + 8] = fi + 0
 
-		const totalNeeded = locations.length * densityPerPatch
-		if (totalNeeded > this.params.count) {
-			console.warn(
-				`Grass limit reached. Needed: ${totalNeeded}, Max: ${this.params.count}. Truncating.`,
-			)
-		}
+            indices[i * 12 + 9] = fi + 3
+            indices[i * 12 + 10] = fi + 1
+            indices[i * 12 + 11] = fi + 2
+        }
 
-		const attribute = this.geometry.getAttribute(
-			"aInstancePosition",
-		) as THREE.InstancedBufferAttribute
-		const array = attribute.array as Float32Array
+        this.geometry = new InstancedBufferGeometry()
+        this.geometry.instanceCount = 0
+        this.geometry.setIndex(indices)
+        this.geometry.boundingSphere = new Sphere(
+            new Vector3(0, 0, 0),
+            Infinity,
+        )
 
-		const patchRadius = this.params.patchSize * 0.5
+        const positions = new Float32Array(this.params.count * 3)
+        this.geometry.setAttribute(
+            "aInstancePosition",
+            new InstancedBufferAttribute(positions, 3),
+        )
 
-		let index = 0
+        const vertexCount = (segments + 1) * 2
+        const dummyPositions = new Float32Array(vertexCount * 3)
+        this.geometry.setAttribute(
+            "position",
+            new BufferAttribute(dummyPositions, 3),
+        )
+    }
 
-		for (const loc of locations) {
-			for (let i = 0; i < densityPerPatch; i++) {
-				if (index >= this.params.count) break
+    private setMaterial() {
+        this.grassMaterial = new GrassMaterial({
+            segments: this.params.segments,
+            patchSize: this.params.patchSize,
+            width: this.params.width,
+            height: this.params.height,
+            interactionRadius: this.params.interactionRadius,
+        })
+    }
 
-				const angle = Math.random() * Math.PI * 2
-				const r = Math.sqrt(Math.random()) * patchRadius
+    private plantGrass(surfaceMesh?: Mesh) {
+        if (!this.sampler || !this.geometry) return
 
-				const xStr = r * Math.cos(angle)
-				const zStr = r * Math.sin(angle)
+        const attribute = this.geometry.getAttribute(
+            "aInstancePosition",
+        ) as InstancedBufferAttribute
+        const array = attribute.array as Float32Array
 
-				const wx = loc.x + xStr
-				const wz = loc.z + zStr
-				const wy = 0
+        const tempPosition = new Vector3()
+        const tempNormal = new Vector3()
 
-				array[index * 3 + 0] = wx
-				array[index * 3 + 1] = wy
-				array[index * 3 + 2] = wz
+        const transformMatrix = new Matrix4()
+        if (surfaceMesh) {
+            surfaceMesh.updateMatrixWorld(true)
+            transformMatrix.copy(surfaceMesh.matrixWorld)
+        }
 
-				index++
-			}
-		}
+        for (let i = 0; i < this.params.count; i++) {
+            this.sampler.sample(tempPosition, tempNormal)
+            tempPosition.applyMatrix4(transformMatrix)
 
-		this.geometry.instanceCount = index
-		attribute.needsUpdate = true
-	}
+            array[i * 3 + 0] = tempPosition.x
+            array[i * 3 + 1] = tempPosition.y
+            array[i * 3 + 2] = tempPosition.z
+        }
+
+        this.geometry.instanceCount = this.params.count
+        attribute.needsUpdate = true
+    }
+
+    public update(deltaTime: number) {
+        this.time += deltaTime
+        if (this.grassMaterial) {
+            this.grassMaterial.time = this.time * 0.001
+
+            if (this.context) {
+                const ship = this.context.scene.getObjectByName("ShipPivot")
+                if (ship) {
+                    this.grassMaterial.playerPosition = ship.position
+                }
+            }
+        }
+    }
+
+    async initialize(context: GameContext) {
+        await super.initialize(context)
+        this.setUpTweakPane()
+    }
+
+    private setUpTweakPane() {
+        const urlParams = new URLSearchParams(window.location.search)
+        const debugParam = urlParams.get("debug")
+
+        if (debugParam !== "grass") {
+            return
+        }
+
+        const pane = TweakPane.getInstance()
+        const folder = pane.addFolder({
+            title: "Grass Settings",
+            expanded: false,
+        })
+
+        folder
+            .addBinding(this.params, "width", { min: 0.01, max: 0.5 })
+            .on("change", () => this.updateParams({ width: this.params.width }))
+
+        folder
+            .addBinding(this.params, "height", { min: 0.1, max: 5.0 })
+            .on("change", () =>
+                this.updateParams({ height: this.params.height }),
+            )
+
+        folder.addBinding(this.params, "count", {
+            readonly: true,
+            label: "Count",
+        })
+    }
+
+    updateParams(params: Partial<GrassOptions>) {
+        this.params = { ...this.params, ...params }
+        if (this.grassMaterial) {
+            this.grassMaterial.setGrassParams(
+                this.params.segments,
+                this.params.patchSize,
+                this.params.width,
+                this.params.height,
+            )
+        }
+    }
 }
