@@ -23,7 +23,14 @@ export type KeyboardKeys =
     | "Digit2"
     | "Digit3"
     | "Digit4"
-    | "Digit5"
+    | "Digit5";
+    
+export type ActionType = 
+    | "MoveForward" | "MoveBackward" 
+    | "TurnLeft" | "TurnRight"
+    | "Interact" ;
+
+export type InputConfig = Record<ActionType, KeyboardKeys[]>;
 
 export type InputMap = {
     name: string
@@ -73,13 +80,13 @@ export interface IActionMapper {
 
 // 플레이어 비행 액션 타입
 export interface FlightActions {
-    movement: Vector2 // A/D: 좌우 회전, W/S: 전진/후진
-    boost: boolean // Shift: 부스트
-    accelerate: number // Q/E: 속도 감소/증가 (-1, 0, 1)
-    pitch: number // 상하 피치 제어 (향후 마우스나 다른 키로 제어 예정)
+    movement: Vector2
+    boost: boolean
+    accelerate: number
+    pitch: number
 }
 
 // 카메라 컨트롤 액션 타입
 export interface CameraActions {
-    modeSwitch: number | null // 1-5: 카메라 모드 전환 (null이면 변경 없음)
+    modeSwitch: number | null
 }

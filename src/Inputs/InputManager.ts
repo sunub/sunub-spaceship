@@ -1,23 +1,25 @@
-import EventEmitter from "../utils/EventEmitter"
 import type {
-    IActionMapper,
-    IInputProcessor,
-    InputEventData,
+    ActionType,
+    InputConfig,
     KeyboardKeys,
 } from "./types"
 
-export class InputManager extends EventEmitter {
+type InputListener = (active: boolean) => void
+
+export class InputManager {
     private static instance: InputManager
-    private rawInputs = new Map<KeyboardKeys, boolean>()
-    private processors = new Map<string, IInputProcessor>()
-    private isEnabled = true
+    private isLocked: boolean = false
 
-    public actionMappers = new Map<string, IActionMapper>()
-
-    constructor() {
-        super()
-        this.setupEventListeners()
+    private config: InputConfig = {
+        MoveForward: ["KeyW", "ArrowUp"],
+        MoveBackward: ["KeyS", "ArrowDown"],
+        TurnLeft: ["KeyA", "ArrowLeft"],
+        TurnRight: ["KeyD", "ArrowRight"],
+        Interact: ["KeyE"], 
     }
+
+    private pressedKeys = new Set<KeyboardKeys>()
+    private listeners = new Map<ActionType, Set<InputListener>>()
 
     static getInstance(): InputManager {
         if (!InputManager.instance) {
@@ -26,151 +28,57 @@ export class InputManager extends EventEmitter {
         return InputManager.instance
     }
 
-    // 프로세서 등록 (Vector2, 조합키 등)
-    addProcessor(processor: IInputProcessor): this {
-        this.processors.set(processor.name, processor)
-        return this
+    constructor() {
+        this.setupEventListeners()
     }
 
-    // 액션 매퍼 등록 (게임 액션 매핑)
-    addActionMapper(mapper: IActionMapper): this {
-        this.actionMappers.set(mapper.name, mapper)
-        return this
+    private setupEventListeners() {
+        window.addEventListener("keydown", (e) => this.handleKey(e.code as KeyboardKeys, true))
+        window.addEventListener("keyup", (e) => this.handleKey(e.code as KeyboardKeys, false))
+        window.addEventListener("blur", () => this.pressedKeys.clear())
     }
 
-    // 프로세서 제거
-    removeProcessor(name: string): this {
-        const processor = this.processors.get(name)
-        processor?.dispose?.()
-        this.processors.delete(name)
-        return this
-    }
+    private handleKey(key: KeyboardKeys, isPressed: boolean) {
+        if(this.isLocked) {
+            return
+        }
 
-    // 액션 매퍼 제거
-    removeActionMapper(name: string): this {
-        const mapper = this.actionMappers.get(name)
-        mapper?.dispose?.()
-        this.actionMappers.delete(name)
-        return this
-    }
+        if(isPressed) {
+            this.pressedKeys.add(key)
+        } else {
+            this.pressedKeys.delete(key)
+        }
 
-    // 활성화/비활성화
-    setEnabled(enabled: boolean): this {
-        this.isEnabled = enabled
-        return this
-    }
-
-    // Raw 입력 상태 조회
-    isKeyPressed(key: KeyboardKeys): boolean {
-        return this.rawInputs.get(key) || false
-    }
-
-    // 모든 Raw 입력 상태 조회
-    getRawInputs(): Map<KeyboardKeys, boolean> {
-        return new Map(this.rawInputs)
-    }
-
-    // 메인 업데이트 루프 (Game.ts에서 호출)
-    update(): void {
-        if (!this.isEnabled) return
-
-        // 1. 프로세서들 실행
-        this.processors.forEach((processor) => {
-            try {
-                const result = processor.process(this.rawInputs)
-                if (result !== undefined) {
-                    this.trigger(`input.${processor.name}`, result)
-                }
-            } catch (error) {
-                console.warn(`Error in processor ${processor.name}:`, error)
+        for(const [action, keys] of Object.entries(this.config)) {
+            if(keys.includes(key)) {
+                this.listeners.get(action as ActionType)?.forEach(cb => cb(isPressed))
             }
-        })
-
-        // 2. 액션 매퍼들 실행
-        this.actionMappers.forEach((mapper) => {
-            try {
-                const result = mapper.map()
-                if (result !== undefined) {
-                    this.trigger(`action.${mapper.name}`, result)
-                }
-            } catch (error) {
-                console.warn(`Error in action mapper ${mapper.name}:`, error)
-            }
-        })
+        }
     }
 
-    private setupEventListeners(): void {
-        addEventListener("keydown", (event) => {
-            if (!this.isEnabled) return
+    public isAction(action: ActionType) {
+        if(this.isLocked) {
+            return false
+        }
 
-            const key = event.code as KeyboardKeys
-            const wasPressed = this.rawInputs.get(key) || false
-
-            this.rawInputs.set(key, true)
-
-            // 키 다운 이벤트 발행 (처음 눌렸을 때만)
-            if (!wasPressed) {
-                this.trigger("input.keydown", {
-                    key: {
-                        code: key,
-                        pressed: true,
-                        timestamp: Date.now(),
-                    },
-                } as InputEventData)
-            }
-        })
-
-        addEventListener("keyup", (event) => {
-            if (!this.isEnabled) return
-
-            const key = event.code as KeyboardKeys
-            this.rawInputs.set(key, false)
-
-            // 키 업 이벤트 발행
-            this.trigger("input.keyup", {
-                key: {
-                    code: key,
-                    pressed: false,
-                    timestamp: Date.now(),
-                },
-            } as InputEventData)
-        })
-
-        // 포커스 잃을 때 모든 키 해제
-        addEventListener("blur", () => {
-            this.rawInputs.forEach((_, key) => {
-                this.rawInputs.set(key, false)
-            })
-        })
+        return this.config[action].some(key => this.pressedKeys.has(key))
     }
 
-    // 디버깅용 메서드들
-    getProcessorNames(): string[] {
-        return Array.from(this.processors.keys())
+    public subscribe(action: ActionType, callback: InputListener) {
+        if(!this.listeners.has(action)) {
+            this.listeners.set(action, new Set());
+        }
+        this.listeners.get(action)?.add(callback)
+
+        return () => this.listeners.get(action)?.delete(callback)
     }
 
-    getActionMapperNames(): string[] {
-        return Array.from(this.actionMappers.keys())
+    public lock() {
+        this.isLocked = true
+        this.pressedKeys.clear()
     }
 
-    getPressedKeys(): KeyboardKeys[] {
-        const pressed: KeyboardKeys[] = []
-        this.rawInputs.forEach((isPressed, key) => {
-            if (isPressed) pressed.push(key)
-        })
-        return pressed
-    }
-
-    dispose(): void {
-        this.processors.forEach((processor) => {
-            processor.dispose?.()
-        })
-        this.actionMappers.forEach((mapper) => {
-            mapper.dispose?.()
-        })
-        this.processors.clear()
-        this.actionMappers.clear()
-        this.rawInputs.clear()
-        this.removeAllListeners()
+    public unlock() {
+        this.isLocked = false
     }
 }

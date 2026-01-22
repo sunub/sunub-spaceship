@@ -22,14 +22,11 @@ export class FlightActionMapper implements IActionMapper {
         const pitch = this.getPitchInput()
 
         const actions: FlightActions = { movement, boost, accelerate, pitch }
-
-        // 변경사항이 있을 때만 새로운 객체 생성 및 캐시 업데이트
         if (this.hasChanged(actions)) {
             this.lastActions = { ...actions }
             return actions
         }
 
-        // 변경사항이 없으면 undefined 반환 (이벤트 발행 안함)
         return undefined as any
     }
 
