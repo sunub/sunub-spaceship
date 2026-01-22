@@ -1,5 +1,11 @@
 import type * as RAPIER from "@dimforge/rapier3d-compat"
-import * as THREE from "three/webgpu"
+import {
+    Euler,
+    MathUtils,
+    Quaternion,
+    type Vector2,
+    Vector3,
+} from "three/webgpu"
 
 /**
  * A physics-based flight controller that applies forces and torques for realistic movement.
@@ -46,7 +52,7 @@ export class FlightController {
     private smoothedRollInput: number = 0
     private smoothedThrustInput: number = 0
 
-    public pointerVector: THREE.Vector2 | null = null
+    public pointerVector: Vector2 | null = null
 
     /**
      * Updates the internal state of the controller based on user actions.
@@ -57,7 +63,7 @@ export class FlightController {
         this.thrustInput = thrust
     }
 
-    public updatePointerInput(vector: THREE.Vector2) {
+    public updatePointerInput(vector: Vector2) {
         this.pointerVector = vector.length() > 0.01 ? vector : null
     }
 
@@ -72,15 +78,11 @@ export class FlightController {
         this.updateSmoothedInputs()
 
         // 2. Get current orientation and velocity from the physics body
-        const currentRotation = new THREE.Quaternion().copy(
-            rigidBody.rotation() as THREE.Quaternion,
+        const currentRotation = new Quaternion().copy(
+            rigidBody.rotation() as Quaternion,
         )
-        const currentLinvel = new THREE.Vector3().copy(
-            rigidBody.linvel() as THREE.Vector3,
-        )
-        const currentAngvel = new THREE.Vector3().copy(
-            rigidBody.angvel() as THREE.Vector3,
-        )
+        const currentLinvel = new Vector3().copy(rigidBody.linvel() as Vector3)
+        const currentAngvel = new Vector3().copy(rigidBody.angvel() as Vector3)
 
         // 3. Calculate Target Velocities based on the *smoothed* input
         const { targetLinvel, targetAngvel } =
@@ -120,13 +122,13 @@ export class FlightController {
      * @param currentRotation - The current orientation of the spaceship.
      * @returns An object containing the target linear and angular velocities.
      */
-    private calculateTargetVelocities(currentRotation: THREE.Quaternion): {
-        targetLinvel: THREE.Vector3
-        targetAngvel: THREE.Vector3
+    private calculateTargetVelocities(currentRotation: Quaternion): {
+        targetLinvel: Vector3
+        targetAngvel: Vector3
     } {
         if (this.pointerVector) {
             // 1. 우주선의 현재 worldForward 벡터 (Local X)
-            const currentHeading = new THREE.Vector3(1, 0, 0).applyQuaternion(
+            const currentHeading = new Vector3(1, 0, 0).applyQuaternion(
                 currentRotation,
             )
 
@@ -137,7 +139,7 @@ export class FlightController {
             )
 
             // 3. 우주선의 현재 각도 (Yaw)
-            const currentEuler = new THREE.Euler().setFromQuaternion(
+            const currentEuler = new Euler().setFromQuaternion(
                 currentRotation,
                 "YXZ",
             )
@@ -151,9 +153,9 @@ export class FlightController {
                 angleDiff += Math.PI * 2
             }
             // 5. Angular Velocity (회전) 설정: 각도 차이에 비례하여 정해진 turnSpeed로 회전
-            const targetAngvel = new THREE.Vector3(
+            const targetAngvel = new Vector3(
                 0,
-                angleDiff * THREE.MathUtils.degToRad(this.turnSpeed),
+                angleDiff * MathUtils.degToRad(this.turnSpeed),
                 0,
             )
             // 6. Linear Velocity (전진): 포인터 거리(강도)에 비례하여 worldForward 방향으로 전진
@@ -164,7 +166,7 @@ export class FlightController {
             return { targetLinvel, targetAngvel }
         }
         // Target linear velocity (using smoothed input)
-        const localForward = new THREE.Vector3(1, 0, 0)
+        const localForward = new Vector3(1, 0, 0)
         const worldForward = localForward
             .clone()
             .applyQuaternion(currentRotation)
@@ -173,9 +175,9 @@ export class FlightController {
         )
 
         // Target angular velocity (using smoothed input)
-        const targetAngvel = new THREE.Vector3(
+        const targetAngvel = new Vector3(
             0,
-            -this.smoothedRollInput * THREE.MathUtils.degToRad(this.turnSpeed),
+            -this.smoothedRollInput * MathUtils.degToRad(this.turnSpeed),
             0,
         )
 
@@ -189,10 +191,10 @@ export class FlightController {
      * @returns The force vector to apply.
      */
     private calculateCorrectiveForce(
-        targetVelocity: THREE.Vector3,
-        currentVelocity: THREE.Vector3,
-    ): THREE.Vector3 {
-        const velocityError = new THREE.Vector3().subVectors(
+        targetVelocity: Vector3,
+        currentVelocity: Vector3,
+    ): Vector3 {
+        const velocityError = new Vector3().subVectors(
             targetVelocity,
             currentVelocity,
         )
@@ -207,10 +209,10 @@ export class FlightController {
      * @returns The torque vector to apply.
      */
     private calculateCorrectiveTorque(
-        targetVelocity: THREE.Vector3,
-        currentVelocity: THREE.Vector3,
-    ): THREE.Vector3 {
-        const velocityError = new THREE.Vector3().subVectors(
+        targetVelocity: Vector3,
+        currentVelocity: Vector3,
+    ): Vector3 {
+        const velocityError = new Vector3().subVectors(
             targetVelocity,
             currentVelocity,
         )
@@ -260,3 +262,11 @@ export class FlightController {
         return this.smoothedThrustInput
     }
 }
+
+// feat : FlightController 입력 보간 및 포인터 기반 스티어링 기능 구현
+
+// - FlightController: 입력 값의 급격한 변화를 방지하기 위한 LERP 기반 Smoothing 로직 추가
+// - Pointer Steering: 포인터 및 조이스틱 벡터를 추적하여 우주선의 회전 방향을 제어하는 로직 구현
+// - 구조 개선: Target Velocity 및 물리 힘(Force/Torque) 계산 로직을 메서드로 분리하여 모듈화
+// - 시각 효과 연동: 보간된 추진력 값을 추출하는 접근자를 추가하여 우주선 엔진 화염 애니메이션과 연동
+// - TweakPane 지원: 비행 파라미터(속도, 회전, 민감도 등) 조정을 위한 Getter/Setter 구성
