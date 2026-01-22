@@ -1,4 +1,5 @@
 import * as THREE from "three/webgpu"
+import { TweakPane } from "@/widgets/TweakPane"
 
 export interface ProjectData {
     id: string
@@ -12,6 +13,7 @@ export interface ProjectData {
 export class ProjectRegistry {
     private static instance: ProjectRegistry
     private projects: ProjectData[] = []
+    private projectPosition: THREE.Vector3 = new THREE.Vector3(25.2, 0, 20.2)
 
     private constructor() {
         this.initializeDefaultProjects()
@@ -34,7 +36,7 @@ export class ProjectRegistry {
                     "The best way to learn Three.js. Comprehensive course from basics to advanced shaders.",
                 url: "https://threejs-journey.com",
                 tags: ["Education", "Three.js", "WebGL"],
-                position: new THREE.Vector3(35, 0, 0),
+                position: this.projectPosition,
             },
             {
                 id: "chartogne-taillet",
@@ -43,18 +45,34 @@ export class ProjectRegistry {
                     "A premium 3D experience for a prestigious Champagne house.",
                 url: "https://chartogne-taillet.com",
                 tags: ["Luxury", "Experience", "SVG"],
-                position: new THREE.Vector3(0, 0, 40),
-            },
-            {
-                id: "bruno-simon",
-                title: "Bruno Simon Portfolio",
-                description:
-                    "The legendary toy car portfolio that inspired this project.",
-                url: "https://brunosimon.com",
-                tags: ["Portfolio", "Game", "Physics"],
-                position: new THREE.Vector3(-35, 0, 0),
+                position: new THREE.Vector3(-12, 0, 28),
             },
         )
+
+        // this.debug()
+    }
+
+    // 32 0 8
+    // 25.2 0 20.2
+
+    public debug() {
+        const pane = TweakPane.getInstance()
+        const folder = pane.addFolder({ title: "Project Position" })
+        folder.addBinding(this.projectPosition, "x", {
+            min: -1000,
+            max: 1000,
+            step: 0.1,
+        })
+        folder.addBinding(this.projectPosition, "y", {
+            min: -1000,
+            max: 1000,
+            step: 0.1,
+        })
+        folder.addBinding(this.projectPosition, "z", {
+            min: -1000,
+            max: 1000,
+            step: 0.1,
+        })
     }
 
     public getProjects(): ProjectData[] {
