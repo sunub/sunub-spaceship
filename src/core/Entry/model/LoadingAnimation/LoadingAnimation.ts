@@ -1,6 +1,5 @@
 import gsap from "gsap"
-import { bloom } from "three/examples/jsm/tsl/display/BloomNode.js"
-import { attribute, pass, uniform } from "three/tsl"
+import { attribute, uniform } from "three/tsl"
 import {
     DynamicDrawUsage,
     Group,
@@ -9,7 +8,6 @@ import {
     Matrix4,
     Mesh,
     MeshBasicMaterial,
-    PostProcessing,
     SphereGeometry,
     Vector3,
 } from "three/webgpu"
@@ -20,7 +18,6 @@ export class LoadingAnimation implements IGameObject {
     private context!: GameContext
     private geometry!: SphereGeometry
     private sphere!: Mesh
-    private postProcessing!: PostProcessing
 
     private instancedMesh!: InstancedMesh
     private maxTrails = 20
@@ -32,6 +29,9 @@ export class LoadingAnimation implements IGameObject {
         time: number
     }[] = []
     private currentTrailIndex = 0
+    private isLoaded = false
+    private rotationTween!: ReturnType<typeof gsap.to>
+    private globalOpacity = 1.0
 
     constructor(private position: Vector3 = new Vector3(0, 11, 0)) {}
 
@@ -91,23 +91,19 @@ export class LoadingAnimation implements IGameObject {
             this.instancedMesh.setMatrixAt(i, new Matrix4().makeScale(0, 0, 0))
         }
         this.context.scene.add(this.instancedMesh)
-
-        // -- Post Processing --
-        this.postProcessing = new PostProcessing(
-            this.context.rendering.renderer,
-        )
-
-        const scenePass = pass(this.context.scene, this.context.camera.instance)
-        const bloomPass = bloom(scenePass, 2.5, 0.3, 0.2)
-
-        this.postProcessing.outputNode = scenePass.add(bloomPass)
-
-        // -- Animation --
-        gsap.to(pivotGroup.rotation, {
+        this.rotationTween = gsap.to(pivotGroup.rotation, {
             z: Math.PI * 2 * -1,
             duration: 1.75,
             repeat: -1,
             ease: "power2.inOut",
+            onRepeat: () => {
+                if (this.isLoaded) {
+                    this.rotationTween.repeat(0)
+                }
+            },
+            onComplete: () => {
+                this.fadeOut()
+            },
         })
 
         pivotGroup.position.set(
@@ -117,15 +113,31 @@ export class LoadingAnimation implements IGameObject {
         )
     }
 
+    private fadeOut() {
+        gsap.to(this, {
+            globalOpacity: 0,
+            duration: 0.5,
+            onUpdate: () => {
+                ;(this.sphere.material as MeshBasicMaterial).opacity =
+                    this.globalOpacity
+            },
+            onComplete: () => {
+                this.rotationTween.kill()
+            },
+        })
+    }
+
+    public setLoaded() {
+        this.isLoaded = true
+    }
+
     public update(time: number): void {
-        // 1. 현재 위치에 새로운 Trail 생성 (Ring Buffer 방식)
         const currentIndex = this.currentTrailIndex % this.maxTrails
         const trail = this.trailData[currentIndex]
 
         this.sphere.updateWorldMatrix(true, false)
         const worldPos = this.sphere.getWorldPosition(new Vector3())
 
-        // Trail 활성화 및 초기 상태 설정
         trail.active = true
         trail.position.copy(worldPos)
         trail.scale = 1.2
@@ -134,7 +146,6 @@ export class LoadingAnimation implements IGameObject {
 
         this.currentTrailIndex++
 
-        // 2. 모든 활성화된 Trail 업데이트 및 인스턴스 속성 반영
         const dummyMatrix = new Matrix4()
         const opacityAttr = this.geometry.attributes
             .instanceOpacity as InstancedBufferAttribute
@@ -167,7 +178,12 @@ export class LoadingAnimation implements IGameObject {
             this.instancedMesh.setMatrixAt(i, dummyMatrix)
 
             // 투명도 속성 업데이트
-            opacityAttr.setX(i, d.opacity)
+            opacityAttr.setX(i, d.opacity * this.globalOpacity)
+        }
+
+        if (this.sphere.material instanceof MeshBasicMaterial) {
+            this.sphere.material.transparent = true
+            this.sphere.material.opacity = this.globalOpacity
         }
 
         // 변경 사항 GPU 업로드 요청
@@ -176,7 +192,5 @@ export class LoadingAnimation implements IGameObject {
 
         // 셰이더 시간 업데이트 (필요한 경우 주석 해제)
         // (this.instancedMesh.material as PlanetMaterial).uTime.value = time
-
-        this.postProcessing.render()
     }
 }
