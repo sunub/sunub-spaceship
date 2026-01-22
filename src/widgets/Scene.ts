@@ -1,15 +1,16 @@
-import * as THREE from "three"
+import type { Object3D } from "three/webgpu"
+import { Scene as THREESCENE } from "three/webgpu"
 
-export class Scene extends THREE.Scene {
-	addScene(object: THREE.Object3D[]) {
-		for (const obj of object) {
-			this.add(obj)
-		}
-	}
+export class Scene extends THREESCENE {
+    addScene(object: Object3D[]) {
+        for (const obj of object) {
+            this.add(obj)
+        }
+    }
 
-	removeScene(object: THREE.Object3D[]) {
-		for (const obj of object) {
-			this.remove(obj)
-		}
-	}
+    removeScene(object: Object3D[]) {
+        for (const obj of object) {
+            this.remove(obj)
+        }
+    }
 }

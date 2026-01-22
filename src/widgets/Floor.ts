@@ -1,253 +1,197 @@
-import * as RAPIER from "@dimforge/rapier3d-compat"
-import * as THREE from "three/webgpu"
-import type { GameContext, IGameObject } from "../core/GameContext"
+import { ColliderDesc, RigidBodyDesc } from "@dimforge/rapier3d-compat"
+import { color, vec3 } from "three/tsl"
+import type { Mesh } from "three/webgpu"
+import { Box3, Object3D, Vector3 } from "three/webgpu"
+import type { GameContext } from "../core/GameContext"
 import { GridMaterial } from "./Materials/GridMaterial"
-import { Grass } from "./Models/Grass"
+import { BaseModel } from "./Models"
+import type { Physics } from "./Physics"
 import { TweakPane } from "./TweakPane"
 
-export class Floor extends THREE.Mesh implements IGameObject
-{
-	private context: GameContext | null = null
-	private size: number = 200 // Increased size to match Game.ts
-	private gridMaterial: GridMaterial
-	private gridOptions: {
-		gridDensity: number
-		gridThickness: number
-	} = {
-			gridDensity: 1.0,
-			gridThickness: 0.01,
-		}
+export class Floor extends BaseModel {
+    private gridMaterial: GridMaterial
+    private gridOptions: {
+        gridDensity: number
+        gridThickness: number
+    } = {
+        gridDensity: 1.0,
+        gridThickness: 0.01,
+    }
+    private colliderMeshes: Mesh[] = []
 
-	private grass: Grass
+    constructor() {
+        super("floorModel")
 
-	constructor(size: number = 200)
-	{
-		super()
-		this.receiveShadow = true
-		this.castShadow = true
-		this.size = size
+        this.gridMaterial = new GridMaterial({
+            gridDensity: this.gridOptions.gridDensity,
+            gridThickness: this.gridOptions.gridThickness,
+        })
+    }
 
-		// GridMaterial 생성
-		this.gridMaterial = new GridMaterial({
-			gridDensity: this.gridOptions.gridDensity,
-			gridThickness: this.gridOptions.gridThickness,
-		})
+    protected setupModelStructure(clonedModel: Object3D): void {
+        this.modelGroup = new Object3D()
+        this.modelGroup.name = `${this.modelName}Group`
 
-		// Three.js 메쉬 설정
-		this.geometry = new THREE.PlaneGeometry(this.size, this.size)
-		this.material = this.gridMaterial
-		this.rotation.x = -Math.PI / 2 // 바닥이 되도록 회전
-		this.frustumCulled = false
-		this.receiveShadow = true
+        this.mesh = clonedModel
 
-		// Grass 초기화 (아직 씬에 추가 안됨)
-		this.grass = new Grass({
-			count: 1000000, // Increased to 1,000,000 for full coverage
-			width: 0.15, // Increased from 0.15 for better coverage
-			height: 0.7, // Reduced from 1.2 to be shorter than SpaceShip (Y=0.75)
-			patchSize: 3.0, // Increased from 1.5 to overlap patches (grid step is 2.0)
-			areaSize: this.size,
-		})
-	}
+        const box = new Box3().setFromObject(clonedModel)
+        const centerOffset = box.getCenter(new Vector3())
 
-	private addGrassOnTheScene(context: GameContext)
-	{
-		// Grass 씬에 추가
-		if (this.grass.mesh)
-		{
-			context.scene.add(this.grass.mesh)
-		}
+        this.mesh.position.set(-centerOffset.x, -box.min.y, -centerOffset.z)
 
-		// 초기 풀 배치 (예제 패턴)
-		this.plantInitialGrass()
-	}
+        this.mesh.traverse((child) => {
+            if ((child as Mesh).isMesh) {
+                const mesh = child as Mesh
 
-	async initialize(context: GameContext)
-	{
-		this.context = context
-		this.setUpPhysics()
-		this.setUpTweakPane()
+                this.colliderMeshes.push(mesh)
+                mesh.castShadow = false
+                mesh.receiveShadow = true
+                mesh.material = this.gridMaterial
+                mesh.frustumCulled = false
+            }
+        })
 
-		// 씬에 자동으로 추가
-		context.scene.add(this)
-		this.addGrassOnTheScene(context)
-	}
+        this.modelGroup.add(this.mesh)
+    }
 
-	update(deltaTime: number)
-	{
-		// if(!this.context || !this.context.camera) {
-		//   return;
-		// }
+    async initialize(context: GameContext) {
+        this.context = context
+        this.setUpTweakPane()
 
-		// this.position.set(
-		//   this.context.camera.instance.position.x,
-		//   0,
-		//   this.context.camera.instance.position.z
-		// );
+        await super.initialize(context)
+    }
 
-		// Find Spaceship pivot to track position for grass interaction
-		let playerPos: THREE.Vector3 | undefined
-		if (this.context)
-		{
-			// Try to find the ship pivot by name (as defined in SpaceShip.ts)
-			const ship = this.context.scene.getObjectByName("ShipPivot")
-			if (ship)
-			{
-				playerPos = ship.position
-			}
-		}
+    public update(_: number) {}
 
-		// Grass 애니메이션 업데이트 (Player Position 전달)
-		if (this.grass)
-		{
-			this.grass.update(deltaTime, playerPos)
-		}
-	}
+    protected async setupPhysics(): Promise<void> {
+        if (!this.rigidBody && this.context?.physics && this.mesh) {
+            this.createPhysicsBody(this.context.physics)
+        }
+    }
 
-	private plantInitialGrass()
-	{
-		const locations: { x: number; z: number }[] = []
-		const halfSize = this.size / 2
+    private createPhysicsBody(physics: Physics) {
+        if (!this.modelGroup || !this.mesh) {
+            return
+        }
 
-		// Massive budget: 1,000,000 grass blades.
-		// Use 100 blades per patch for maximum density.
-		// 1,000,000 / 100 = 10,000 patches.
-		// sqrt(10,000) = 100.
-		// 200 / 100 = 2.0 units step size.
+        // [핵심 수정 1] RigidBody를 무조건 (0,0,0) / 회전 0으로 고정합니다.
+        // 이미 아래에서 applyMatrix4를 통해 버텍스들이 "제자리"를 찾아갔기 때문에
+        // RigidBody가 또 움직이면 위치가 이중으로 적용됩니다.
+        const rigidBodyDesc = RigidBodyDesc.fixed()
+            .setTranslation(0, 0, 0)
+            .setRotation({ x: 0, y: 0, z: 0, w: 1 }) // 회전도 초기화 (Identity)
 
-		const densityPerPatch = 100
-		const patchCountSide = Math.floor(
-			Math.sqrt(this.grass.params.count / densityPerPatch),
-		)
-		const step = this.size / patchCountSide
+        this.rigidBody = physics.world.createRigidBody(rigidBodyDesc)
 
-		for (let i = 0; i < patchCountSide; i++)
-		{
-			for (let j = 0; j < patchCountSide; j++)
-			{
-				const baseX = -halfSize + i * step + step / 2
-				const baseZ = -halfSize + j * step + step / 2
+        const targetMeshes =
+            this.colliderMeshes.length > 0 ? this.colliderMeshes : []
 
-				// Jitter within the cell to eliminate grid patterns
-				const jitterX = (Math.random() - 0.5) * step * 0.95
-				const jitterZ = (Math.random() - 0.5) * step * 0.95
+        if (targetMeshes.length === 0) {
+            this.mesh.traverse((c) => {
+                if ((c as Mesh).isMesh) targetMeshes.push(c as Mesh)
+            })
+        }
 
-				locations.push({
-					x: baseX + jitterX,
-					z: baseZ + jitterZ,
-				})
-			}
-		}
+        targetMeshes.forEach((mesh) => {
+            const geometry = mesh.geometry
+            if (!geometry) return
 
-		this.grass.plantAtPositions(locations, densityPerPatch)
-	}
+            // [핵심 수정 2] 매트릭스 업데이트 순서 보장
+            // mesh.matrixWorld가 부모(modelGroup)의 변경 사항까지 확실히 반영하도록
+            // 부모부터 업데이트를 해주는 것이 안전합니다.
+            if (this.modelGroup) {
+                this.modelGroup.updateMatrixWorld(true)
+            }
+            mesh.updateMatrixWorld(true)
 
-	private setUpPhysics()
-	{
-		if (!this.context) return
+            // 지오메트리 복제 및 월드 좌표 베이킹 (Baking)
+            const clonedGeom = geometry.clone()
+            clonedGeom.applyMatrix4(mesh.matrixWorld)
+            // -> 이제 버텍스들은 화면에 보이는 그 위치 그대로의 (x,y,z) 값을 가집니다.
 
-		// RigidBody 생성 설명자(Descriptor)를 만듭니다.
-		// 'fixed' 타입은 중력의 영향을 받지 않고 움직이지 않는 고정된 객체를 의미합니다.
-		const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed()
+            const positions = clonedGeom.attributes.position.array
+            const indices = clonedGeom.index
+                ? clonedGeom.index.array
+                : undefined
 
-		// Three.js 메쉬의 위치를 물리 객체에 설정합니다.
-		// 이 부분이 물리 엔진 세계에서의 박스 모델의 위치와 실제 모델이 렌더되는 세계의 위치를 일치시키는 역할을 합니다.
-		// 이 부분을 제대로 설정하지 않을 경우 물리 충돌이 올바르게 작동하지 않을 수 있습니다.
-		rigidBodyDesc.setTranslation(
-			this.position.x,
-			this.position.y,
-			this.position.z,
-		)
+            let indicesArray: Uint32Array
+            if (indices) {
+                indicesArray = new Uint32Array(indices)
+            } else {
+                const vertexCount = positions.length / 3
+                indicesArray = new Uint32Array(vertexCount)
+                for (let i = 0; i < vertexCount; i++) {
+                    indicesArray[i] = i
+                }
+            }
 
-		// 물리 세계(world)에 RigidBody를 생성합니다.
-		// 물리 엔진을 구현할 때 물리엔진의 세계와 렌더링 엔진의 세계가 일치하도록 하는 것이 매우 중요합니다.
-		// 여기서는 GameContext를 통해 Physics 서비스에 접근하여 물리 세계에 바닥을 추가합니다.
-		// 물리 엔진의 세계에 추가된 객체는 물리 시뮬레이션에 참여하게 됩니다.
-		// 바닥은 고정된 객체이므로 다른 동적 객체들과 충돌할 수 있습니다.
-		// 예를 들어, 우주선이 바닥과 충돌하면 물리 엔진이 이를 감지하고 적절한 반응을 계산합니다.
-		const rigidBody =
-			this.context.physics.world.createRigidBody(rigidBodyDesc)
+            const colliderDesc = ColliderDesc.trimesh(
+                positions as Float32Array,
+                indicesArray,
+            )
 
-		// Collider 생성 설명자(Descriptor)를 만듭니다.
-		// Cuboid(직육면체, hx, hy, hz) 형태를 사용합니다. RAPIER는 '반쪽 길이(half-extents)'를 인자로 받습니다.
-		// 바닥이므로 y축 두께는 매우 얇게 설정합니다.
-		const colliderDesc = RAPIER.ColliderDesc.cuboid(
-			this.size / 2.0,
-			0.1,
-			this.size / 2.0,
-		)
+            // Translation 설정 제거 (이미 mesh.matrixWorld에 포함됨)
+            // colliderDesc.setTranslation(...) -> 삭제!
 
-		// 물리 세계에 Collider를 생성하고 위에서 만든 RigidBody에 붙여줍니다.
-		this.context.physics.world.createCollider(colliderDesc, rigidBody)
-	}
+            colliderDesc.setFriction(1.0)
+            colliderDesc.setRestitution(0.1)
+            colliderDesc.setCollisionGroups(0x00020001)
 
-	private setUpTweakPane()
-	{
-		const pane = TweakPane.getInstance()
+            if (this.rigidBody) {
+                physics.world.createCollider(colliderDesc, this.rigidBody)
+            }
 
-		const f = pane.addFolder({
-			title: "Grid Material",
-			expanded: true,
-		})
+            clonedGeom.dispose()
+        })
+    }
 
-		f.addBinding(this.gridOptions, "gridDensity", {
-			min: 0.1,
-			max: 16.0,
-			step: 0.1,
-			label: "Grid Density",
-		}).on("change", (ev: any) =>
-		{
-			this.gridMaterial.gridDensity = ev.value
-		})
+    private setUpTweakPane() {
+        const urlParams = new URLSearchParams(window.location.search)
+        const debugParam = urlParams.get("debug")
 
-		f.addBinding(this.gridOptions, "gridThickness", {
-			min: 0.001,
-			max: 0.1,
-			step: 0.001,
-			label: "Grid Thickness",
-		}).on("change", (ev: any) =>
-		{
-			this.gridMaterial.gridThickness = ev.value
-		})
+        if (debugParam !== "floor") {
+            return
+        }
 
-		// Grass Debug
-		const gFolder = f.addFolder({ title: "Grass", expanded: false })
-		gFolder
-			.addBinding(this.grass.params, "width", { min: 0.01, max: 0.5 })
-			.on("change", () =>
-				this.grass.updateParams({ width: this.grass.params.width }),
-			)
-		gFolder
-			.addBinding(this.grass.params, "height", { min: 0.1, max: 5.0 })
-			.on("change", () =>
-				this.grass.updateParams({ height: this.grass.params.height }),
-			)
-		// Interaction debug
-		gFolder
-			.addBinding({ interactRadius: 3.0 }, "interactRadius", {
-				label: "Interact Radius",
-				min: 0.1,
-				max: 10.0,
-			})
-			.on("change", (ev: any) =>
-				this.grass.updateInteractionRadius(ev.value),
-			)
+        const pane = TweakPane.getInstance()
 
-		gFolder.addBinding(this.grass.params, "count", {
-			readonly: true,
-			label: "Max Count",
-		})
-	}
+        const f = pane.addFolder({
+            title: "Grid Material",
+            expanded: true,
+        })
 
-	dispose()
-	{
-		if (this.context)
-		{
-			this.context.scene.remove(this)
-			if (this.grass?.mesh)
-			{
-				this.context.scene.remove(this.grass.mesh)
-			}
-		}
-	}
+        f.addBinding(this.gridOptions, "gridDensity", {
+            min: 0.1,
+            max: 16.0,
+            step: 0.1,
+            label: "Grid Density",
+        }).on("change", (ev: any) => {
+            this.gridMaterial.gridDensity = ev.value
+        })
+
+        f.addBinding(this.gridOptions, "gridThickness", {
+            min: 0.001,
+            max: 0.1,
+            step: 0.001,
+            label: "Grid Thickness",
+        }).on("change", (ev: any) => {
+            this.gridMaterial.gridThickness = ev.value
+        })
+    }
+
+    /**
+     * TSL Method: Returns the terrain data at the given position.
+     * Currently returns a zero vector as the floor is flat.
+     */
+    public terrainNode(_position: any) {
+        return vec3(0)
+    }
+
+    /**
+     * TSL Method: Returns the color of the terrain based on the data.
+     * Currently returns a dark color to simulate the grid background.
+     */
+    public colorNode(_terrainData: any) {
+        return color(0x0a0a0a)
+    }
 }
