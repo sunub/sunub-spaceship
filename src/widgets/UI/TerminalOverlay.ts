@@ -2,94 +2,154 @@ import gsap from "gsap"
 import type { ProjectData } from "@/core/ProjectRegistry"
 
 export class TerminalOverlay {
-	private element: HTMLElement
-	private isVisible: boolean = false
+    private element: HTMLElement
+    private isVisible: boolean = false
+    private isHiding: boolean = false
 
-	constructor() {
-		this.element = document.createElement("div")
-		this.element.id = "project-terminal"
-		this.element.style.position = "fixed"
-		this.element.style.top = "0"
-		this.element.style.left = "0"
-		this.element.style.width = "100%"
-		this.element.style.height = "100%"
-		this.element.style.zIndex = "1000"
-		this.element.style.display = "none"
-		this.element.style.alignItems = "center"
-		this.element.style.justifyContent = "center"
-		this.element.style.background = "rgba(0, 5, 20, 0.8)"
-		this.element.style.backdropFilter = "blur(20px)"
-		this.element.style.fontFamily = "'Inter', sans-serif"
-		this.element.style.color = "#ffffff"
+    constructor() {
+        this.element = document.createElement("main")
+        this.element.id = "project-terminal"
+        this.element.className = "main-content"
 
-		document.body.appendChild(this.element)
-	}
+        this.element.style.position = "fixed"
+        this.element.style.top = "0"
+        this.element.style.left = "0"
+        this.element.style.width = "100%"
+        this.element.style.height = "100%"
+        this.element.style.zIndex = "1000"
+        this.element.style.display = "none"
 
-	public show(project: ProjectData) {
-		if (this.isVisible) return
-		this.isVisible = true
+        this.element.style.background = "rgba(0, 0, 0, 0.4)"
+        this.element.style.backdropFilter = "blur(10px)"
 
-		this.element.innerHTML = `
-      <div class="terminal-content" style="max-width: 600px; width: 90%; padding: 40px; border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 20px; background: rgba(0, 15, 40, 0.6); box-shadow: 0 0 50px rgba(0, 255, 255, 0.1); opacity: 0; transform: scale(0.9);">
-        <div style="font-size: 0.9rem; color: #00ffff; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 10px;">Project Terminal</div>
-        <h1 style="font-size: 2.5rem; margin: 0 0 20px 0; font-weight: 800; background: linear-gradient(135deg, #ffffff 0%, #00ffff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${project.title}</h1>
-        
-        <p style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9; margin-bottom: 30px;">${project.description}</p>
-        
-        <div style="display: flex; gap: 10px; margin-bottom: 40px; flex-wrap: wrap;">
-          ${project.tags.map((tag) => `<span style="padding: 4px 12px; border-radius: 20px; background: rgba(255, 255, 255, 0.1); font-size: 0.8rem; border: 1px solid rgba(255, 255, 255, 0.1);">${tag}</span>`).join("")}
-        </div>
-        
-        <div style="display: flex; gap: 20px;">
-          <button id="launch-project" style="flex: 1; padding: 15px; border-radius: 12px; background: #00ffff; color: #000; font-weight: 700; border: none; cursor: pointer; transition: all 0.3s; font-size: 1rem;">Launch Project</button>
-          <button id="close-terminal" style="flex: 1; padding: 15px; border-radius: 12px; background: transparent; color: #fff; font-weight: 600; border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer; transition: all 0.3s; font-size: 1rem;">Back to Flight</button>
-        </div>
-      </div>
-    `
+        document.body.appendChild(this.element)
+    }
 
-		this.element.style.display = "flex"
-		const content = this.element.querySelector(
-			".terminal-content",
-		) as HTMLElement
+    public show(project: ProjectData) {
+        if (this.isVisible && !this.isHiding) return
 
-		gsap.to(content, {
-			opacity: 1,
-			scale: 1,
-			duration: 0.5,
-			ease: "back.out(1.7)",
-		})
+        this.isVisible = true
+        this.isHiding = false
+        this.element.style.display = "flex"
 
-		this.element
-			.querySelector("#launch-project")
-			?.addEventListener("click", () => {
-				window.open(project.url, "_blank")
-			})
+        this.element.innerHTML = `
+            <div class="content-wrapper animate-float">
 
-		this.element
-			.querySelector("#close-terminal")
-			?.addEventListener("click", () => {
-				this.hide()
-			})
-	}
+                <div class="glow-backdrop"></div>
 
-	public hide() {
-		if (!this.isVisible) return
+                <div class="glass-card">
 
-		const content = this.element.querySelector(
-			".terminal-content",
-		) as HTMLElement
-		gsap.to(content, {
-			opacity: 0,
-			scale: 0.9,
-			duration: 0.3,
-			onComplete: () => {
-				this.element.style.display = "none"
-				this.isVisible = false
-			},
-		})
-	}
+                    <div class="card-sidebar">
+                        <div class="id-tag">ID: #${project.id.toUpperCase()}</div>
 
-	public get isOpen(): boolean {
-		return this.isVisible
-	}
+                        <div class="image-frame-wrapper">
+                            <div class="image-frame">
+                                <div class="frame-content" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBhzhcCKNV6KmxzL8uVfLmlPx1vkIa7oP2RXIskZiZPw5c7r6Ai72d8fos88qT174G0CTVJyt7BjHQ5rJmxalkf8G9Sc57g60hgrrJ2ZmQtfHJUdllCjfonfwuGql0SqRhRcZr1SznY9XtUaLJns8vw8nJFO-vapPQez8snd7OzSEA79Xy9ipUxlWdYghSaMC1xX-L3spRMVljnLnYhjlSxc1kMBRZgkle9l5wnPMbSAZwGh556rIT21-fehLRNOMnXlYPT678xR2c');">
+                                    <div class="frame-overlay"></div>
+                                </div>
+                            </div>
+                            <div class="corner-deco top-left"></div>
+                            <div class="corner-deco bottom-right"></div>
+                        </div>
+
+                        <div class="status-indicator">
+                            <span class="status-dot-wrapper">
+                                <span class="ping-animation"></span>
+                                <span class="dot"></span>
+                            </span>
+                            VISUALIZATION ACTIVE
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="title-group">
+                            <h1 class="main-title">${project.title}</h1>
+                            <div class="title-underline"></div>
+                        </div>
+
+                        <div class="info-group">
+                            <div class="mission-section">
+                                <h3 class="section-label">Mission Brief</h3>
+                                <p class="description">
+                                    ${project.description}
+                                </p>
+                            </div>
+
+                            <div class="specs-section">
+                                <h3 class="section-label small">System Specifications</h3>
+                                <div class="tags-container">
+                                    ${project.tags.map((tag) => `<span class="tag tag-primary">${tag}</span>`).join("")}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary launch-btn">Launch Project</button>
+                            <button class="btn btn-outline back-btn">
+                                <span class="material-symbols-outlined">arrow_back</span>
+                                Back to Flight
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="outer-deco top-right"></div>
+            <div class="outer-deco bottom-left"></div>
+        `
+
+        const content = this.element.querySelector(".glass-card") as HTMLElement
+
+        gsap.fromTo(
+            content,
+            { opacity: 0, scale: 0.9 },
+            {
+                opacity: 1,
+                scale: 1,
+                duration: 0.5,
+                ease: "back.out(1.7)",
+                overwrite: true,
+            },
+        )
+
+        this.element
+            .querySelector(".launch-btn")
+            ?.addEventListener("click", () => {
+                window.open(project.url, "_blank")
+            })
+
+        this.element
+            .querySelector(".back-btn")
+            ?.addEventListener("click", () => {
+                this.hide()
+            })
+    }
+
+    public hide() {
+        if (!this.isVisible || this.isHiding) return
+
+        this.isHiding = true
+
+        const content = this.element.querySelector(".glass-card") as HTMLElement
+
+        if (content) {
+            gsap.to(content, {
+                opacity: 0,
+                scale: 0.9,
+                duration: 0.3,
+                overwrite: true,
+                onComplete: () => {
+                    this.element.style.display = "none"
+                    this.isVisible = false
+                    this.isHiding = false
+                },
+            })
+        } else {
+            this.element.style.display = "none"
+            this.isVisible = false
+            this.isHiding = false
+        }
+    }
+
+    public get isOpen(): boolean {
+        return this.isVisible && !this.isHiding
+    }
 }
