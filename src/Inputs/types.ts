@@ -23,14 +23,16 @@ export type KeyboardKeys =
     | "Digit2"
     | "Digit3"
     | "Digit4"
-    | "Digit5";
-    
-export type ActionType = 
-    | "MoveForward" | "MoveBackward" 
-    | "TurnLeft" | "TurnRight"
-    | "Interact" ;
+    | "Digit5"
 
-export type InputConfig = Record<ActionType, KeyboardKeys[]>;
+export type ActionType =
+    | "MoveForward"
+    | "MoveBackward"
+    | "TurnLeft"
+    | "TurnRight"
+    | "Interact"
+
+export type InputConfig = Record<ActionType, KeyboardKeys[]>
 
 export type InputMap = {
     name: string

@@ -1,8 +1,4 @@
-import type {
-    ActionType,
-    InputConfig,
-    KeyboardKeys,
-} from "./types"
+import type { ActionType, InputConfig, KeyboardKeys } from "./types"
 
 type InputListener = (active: boolean) => void
 
@@ -15,7 +11,7 @@ export class InputManager {
         MoveBackward: ["KeyS", "ArrowDown"],
         TurnLeft: ["KeyA", "ArrowLeft"],
         TurnRight: ["KeyD", "ArrowRight"],
-        Interact: ["KeyE"], 
+        Interact: ["KeyE"],
     }
 
     private pressedKeys = new Set<KeyboardKeys>()
@@ -33,40 +29,46 @@ export class InputManager {
     }
 
     private setupEventListeners() {
-        window.addEventListener("keydown", (e) => this.handleKey(e.code as KeyboardKeys, true))
-        window.addEventListener("keyup", (e) => this.handleKey(e.code as KeyboardKeys, false))
+        window.addEventListener("keydown", (e) =>
+            this.handleKey(e.code as KeyboardKeys, true),
+        )
+        window.addEventListener("keyup", (e) =>
+            this.handleKey(e.code as KeyboardKeys, false),
+        )
         window.addEventListener("blur", () => this.pressedKeys.clear())
     }
 
     private handleKey(key: KeyboardKeys, isPressed: boolean) {
-        if(this.isLocked) {
+        if (this.isLocked) {
             return
         }
 
-        if(isPressed) {
+        if (isPressed) {
             this.pressedKeys.add(key)
         } else {
             this.pressedKeys.delete(key)
         }
 
-        for(const [action, keys] of Object.entries(this.config)) {
-            if(keys.includes(key)) {
-                this.listeners.get(action as ActionType)?.forEach(cb => cb(isPressed))
+        for (const [action, keys] of Object.entries(this.config)) {
+            if (keys.includes(key)) {
+                this.listeners.get(action as ActionType)?.forEach((cb) => {
+                    cb(isPressed)
+                })
             }
         }
     }
 
     public isAction(action: ActionType) {
-        if(this.isLocked) {
+        if (this.isLocked) {
             return false
         }
 
-        return this.config[action].some(key => this.pressedKeys.has(key))
+        return this.config[action].some((key) => this.pressedKeys.has(key))
     }
 
     public subscribe(action: ActionType, callback: InputListener) {
-        if(!this.listeners.has(action)) {
-            this.listeners.set(action, new Set());
+        if (!this.listeners.has(action)) {
+            this.listeners.set(action, new Set())
         }
         this.listeners.get(action)?.add(callback)
 
