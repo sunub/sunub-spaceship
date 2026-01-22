@@ -1,88 +1,55 @@
-import { Fn, float, mix, type ShaderNodeObject, uniform, vec4 } from "three/tsl"
-import type { Node } from "three/webgpu"
+import { color as colorNode, mix, uniform, vec3, vec4 } from "three/tsl"
 import * as THREE from "three/webgpu"
-import { Game } from "../../Game"
 import gridNode from "./Shader/gridNode"
 import getGridUV from "./Shader/gridVertex"
 
-interface GridMaterialOptions
-{
-	gridDensity?: number
-	gridThickness?: number
+interface GridMaterialOptions {
+    gridDensity?: number
+    gridThickness?: number
+    color?: number
+    backgroundColor?: number
 }
 
-export class GridMaterial extends THREE.NodeMaterial
-{
-	private _uDensity: any
-	private _uThickness: any
-	private game: Game
+export class GridMaterial extends THREE.MeshStandardNodeMaterial {
+    private _uDensity: UniformNode<number>
+    private _uThickness: UniformNode<number>
 
-	constructor(options: GridMaterialOptions = {})
-	{
-		super()
-		this.game = Game.getInstance()
-		const { gridDensity = 1.0, gridThickness = 0.01 } = options
+    constructor(options: GridMaterialOptions = {}) {
+        super()
+        const {
+            gridDensity = 1.0,
+            gridThickness = 0.01,
+            color = 0xffffff,
+            backgroundColor = 0x000000,
+        } = options
 
-		this._uDensity = uniform(gridDensity)
-		this._uThickness = uniform(gridThickness)
+        this._uDensity = uniform(gridDensity)
+        this._uThickness = uniform(gridThickness)
 
-		const worldUV = getGridUV()
-		const gridColor = gridNode(worldUV, this._uDensity, this._uThickness)
+        const worldUV = getGridUV()
+        const gridPattern = gridNode(worldUV, this._uDensity, this._uThickness)
 
-		// Shadow Catcher Logic
-		const catchedShadow = float(1).toVar()
+        const gridFactor = gridPattern.r
+        const colorVec3 = vec3(colorNode(color))
+        const bgVec3 = vec3(colorNode(backgroundColor))
 
-			// Hook into internal Three.js shadow system
-			; (this as any).receivedShadowNode = Fn(
-				([shadow]: [ShaderNodeObject<Node>]) =>
-				{
-					// shadow.r: 빛을 받으면 1, 그림자면 0
-					catchedShadow.assign(shadow.r)
-					return float(1)
-				},
-			)
+        this.colorNode = vec4(mix(bgVec3, colorVec3, gridFactor), 1.0)
+        this.roughness = 0.8 // 빛이 넓게 퍼지도록
+        this.metalness = 0.2 // 약간의 반사광
+        this.side = THREE.DoubleSide
+    }
 
-		this.outputNode = Fn(() =>
-		{
-			const finalColor = gridColor.toVar()
+    get gridDensity(): number {
+        return this._uDensity.value
+    }
+    set gridDensity(value: number) {
+        this._uDensity.value = value
+    }
 
-			// 그림자가 0이면(어두움) -> shadowMix가 커짐 -> shadowColor와 섞임
-			// 그림자가 1이면(밝음) -> shadowMix가 0 -> 원래 색
-			const shadowMix = float(1).sub(catchedShadow).mul(float(0.5)) // 0.5는 그림자 농도
-
-			// [중요] 그리드 라인이 아닌 '빈 공간'에도 그림자가 그려져야 하므로
-			// finalColor의 rgb에 그림자를 합성
-			const shadedColor = mix(
-				finalColor.rgb,
-				this.game.lighting.shadowColor,
-				shadowMix,
-			)
-			return vec4(shadedColor, finalColor.a)
-		})()
-
-		this.transparent = true
-		this.depthWrite = false // 그리드 뒤의 물체가 보여야 한다면 false
-		this.side = THREE.DoubleSide
-	}
-
-	// (선택 사항) TweakPane이 값을 '읽을' 수 있도록 getter/setter를 만들면
-	// TweakPane 바인딩 시 .on('change') 대신 gridMaterial 자체를 바인딩할 수 있습니다.
-	// 예: f.addBinding(this.gridMaterial, "gridDensity", ...)
-	get gridDensity(): number
-	{
-		return this._uDensity.value
-	}
-	set gridDensity(value: number)
-	{
-		this._uDensity.value = value
-	}
-
-	get gridThickness(): number
-	{
-		return this._uThickness.value
-	}
-	set gridThickness(value: number)
-	{
-		this._uThickness.value = value
-	}
+    get gridThickness(): number {
+        return this._uThickness.value
+    }
+    set gridThickness(value: number) {
+        this._uThickness.value = value
+    }
 }
