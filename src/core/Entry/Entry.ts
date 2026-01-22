@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events"
 import { Vector3 } from "three/webgpu"
 import type Resources from "@/utils/Resources"
+import type { Audio } from "@/widgets/Audio"
 import { Game } from "@/widgets/Game"
 import { entrySources, modelSources, textureSources } from "../../sources"
 import type { GameContext } from "../GameContext"
@@ -10,7 +11,6 @@ import { AtmosphereTreeLights } from "./model/AtmosphereTreeLights"
 import { Background } from "./model/Background"
 import { LoadingAnimation } from "./model/LoadingAnimation"
 import { Planet } from "./model/Planet"
-import type { Audio } from "@/widgets/Audio"
 
 export class Entry extends EventEmitter {
     private resources: Resources
@@ -108,10 +108,12 @@ export class Entry extends EventEmitter {
         await this.context.camera.initialize(this.context)
 
         this.context.lighting.initialize()
-        const object_initializers_promises = this.sceneObjects.map(async (obj) => {
-            await obj.initialize(this.context)
-            this.game.addGameObject(obj)
-        })
+        const object_initializers_promises = this.sceneObjects.map(
+            async (obj) => {
+                await obj.initialize(this.context)
+                this.game.addGameObject(obj)
+            },
+        )
         await Promise.all(object_initializers_promises)
 
         this.context.rendering.setPostProcessing()
@@ -124,7 +126,7 @@ export class Entry extends EventEmitter {
         const button = document.querySelector("#entry-button")
         if (button) {
             button.addEventListener("click", () => {
-                this.audio.play('button')
+                this.audio.play("button")
 
                 this.game.startGame()
                 this.dispose()
