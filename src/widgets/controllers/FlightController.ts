@@ -9,172 +9,211 @@ import {
 
 /**
  * A physics-based flight controller that applies forces and torques for realistic movement.
- * This controller calculates the necessary forces to reach a target velocity based on user input,
- * allowing the physics engine to produce natural acceleration and deceleration.
+ * Includes "Hard Stop" logic for collision handling.
  */
 export class FlightController {
-    // --- Public Tunable Parameters ---
+    // ─────────────────────────────────────────────────────────────────────────────
+    // ⚙️ PUBLIC TUNABLE PARAMETERS
+    // ─────────────────────────────────────────────────────────────────────────────
 
-    /**
-     * The maximum forward speed of the spaceship in m/s.
-     */
+    /** Maximum forward speed (m/s) */
     public maxSpeed: number = 10.0
 
-    /**
-     * The maximum turning speed in degrees per second.
-     */
+    /** Maximum turning speed (degrees per second) */
     public turnSpeed: number = 90.0
 
-    /**
-     * A factor that determines how quickly the ship reaches its target velocity.
-     * Higher values provide a "tighter" feel, while lower values feel "looser" and more floaty.
-     */
+    /** How quickly the ship reaches target velocity (Higher = tighter control) */
     public forceFactor: number = 10.0
 
-    /**
-     * A factor that determines how quickly the ship reaches its target angular velocity for turning.
-     */
+    /** How quickly the ship reaches target rotation (Higher = snappier rotation) */
     public torqueFactor: number = 5.0
 
-    /**
-     * Determines how smoothly the spaceship accelerates.
-     * A lower value (e.g., 0.05) results in slower, smoother acceleration.
-     * A higher value (e.g., 0.2) results in faster, more responsive acceleration.
-     * This value is the interpolation factor applied each frame.
-     */
+    /** Input interpolation factor (Lower = smoother/slower, Higher = responsive) */
     public inputSmoothness: number = 0.1
 
-    // --- Private State ---
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 🔒 PRIVATE STATE
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    // Raw Inputs
     private rollInput: number = 0
     private thrustInput: number = 0
 
-    // Smoothed input values for gradual acceleration
+    // Smoothed Inputs (for gradual acceleration)
     private smoothedRollInput: number = 0
     private smoothedThrustInput: number = 0
 
+    // Joystick / Pointer State
     public pointerVector: Vector2 | null = null
+    private thrustEnabled: boolean = true
+
+    // Collision State
+    private isBlocked: boolean = false
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 🎮 INPUT METHODS
+    // ─────────────────────────────────────────────────────────────────────────────
 
     /**
-     * Updates the internal state of the controller based on user actions.
-     * @param actions - The flight actions from the input manager.
+     * Updates the collision state. Called from SpaceShip.ts
+     * @param blocked True if an obstacle is detected in front.
+     */
+    public setBlocked(blocked: boolean) {
+        this.isBlocked = blocked
+    }
+
+    /**
+     * Updates keyboard/gamepad inputs.
      */
     public updateMovementInput(roll: number, thrust: number) {
         this.rollInput = roll
         this.thrustInput = thrust
     }
 
-    public updatePointerInput(vector: Vector2) {
+    /**
+     * Updates joystick/mouse inputs.
+     */
+    public updatePointerInput(vector: Vector2, enableThrust: boolean = true) {
         this.pointerVector = vector.length() > 0.01 ? vector : null
+        this.thrustEnabled = enableThrust
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 🔄 PHYSICS UPDATE LOOP
+    // ─────────────────────────────────────────────────────────────────────────────
+
     /**
-     * The main update loop for the controller.
-     * This should be called in every frame to apply forces to the spaceship's rigid body.
-     * @param rigidBody - The RAPIER.RigidBody of the spaceship.
-     * @param deltaTime - The time elapsed since the last frame.
+     * The main physics update loop. Apply forces and torques here.
      */
     public handleMovement(rigidBody: RAPIER.RigidBody): void {
-        // 1. Smooth the raw user input for gradual acceleration
+        // 1. 입력값 보간 (Smoothing) 계산
         this.updateSmoothedInputs()
 
-        // 2. Get current orientation and velocity from the physics body
+        // 2. 현재 물리 상태 가져오기 (위치, 속도, 각속도)
         const currentRotation = new Quaternion().copy(
             rigidBody.rotation() as Quaternion,
         )
         const currentLinvel = new Vector3().copy(rigidBody.linvel() as Vector3)
         const currentAngvel = new Vector3().copy(rigidBody.angvel() as Vector3)
 
-        // 3. Calculate Target Velocities based on the *smoothed* input
+        // 3. 충돌 및 전진 의도 확인
+        // - 벽에 막혀있는가? (isBlocked)
+        // - 앞으로 가려고 하는가? (thrustInput > 0 또는 조이스틱 사용)
+        const isTryingToMoveForward =
+            this.thrustInput > 0 || this.pointerVector !== null
+
+        // 4. 타겟 속도(Target Velocity) 계산
+        // (이 함수는 사용자의 입력에 따라 우주선이 '가야 할' 속도와 회전을 계산합니다)
         const { targetLinvel, targetAngvel } =
             this.calculateTargetVelocities(currentRotation)
 
-        // 4. Calculate forces and torques needed to reach the target velocities
+        // 🛑 [핵심: 충돌 시 강제 제동 로직]
+        if (this.isBlocked && isTryingToMoveForward) {
+            // A. 물리적 전진 속도 강제 0 (물리적 관성 제거)
+            // 현재 속도를 죽여서 즉시 멈추게 합니다. (회전은 건드리지 않음)
+            rigidBody.setLinvel({ x: 0, y: 0, z: 0 }, true)
+
+            // B. 타겟 전진 속도를 0으로 덮어쓰기
+            // Force 계산 시 '0'을 목표로 하도록 설정하여 앞으로 힘을 주지 않게 함
+            targetLinvel.set(0, 0, 0)
+
+            // C. 내부 스무딩 변수 초기화 (소프트웨어 관성 제거)
+            // 키를 떼도 값이 서서히 줄어드는 것을 방지하고 즉시 0으로 만듦
+            this.smoothedThrustInput = 0
+
+            // 주의: targetAngvel(회전)은 그대로 둡니다.
+            // 덕분에 벽에 박은 상태에서도 조이스틱이나 키보드로 방향을 틀 수 있습니다.
+        }
+
+        // 5. 목표 속도에 도달하기 위한 힘(Force)과 토크(Torque) 계산
+        // (충돌 시에는 targetLinvel이 0이므로 전진 힘은 발생하지 않음)
         const force = this.calculateCorrectiveForce(targetLinvel, currentLinvel)
         const torque = this.calculateCorrectiveTorque(
             targetAngvel,
             currentAngvel,
         )
 
-        // 5. Apply the calculated forces and torques to the rigid body
+        // 6. 물리 엔진에 적용
         rigidBody.addForce(force, true)
         rigidBody.addTorque(torque, true)
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 🧮 HELPER METHODS
+    // ─────────────────────────────────────────────────────────────────────────────
+
     /**
-     * Smoothly interpolates the raw input towards the target value.
-     * This prevents jerky movements and allows for smooth acceleration and deceleration.
+     * Interpolates raw input to smoothed input using LERP.
      */
     private updateSmoothedInputs(): void {
-        // LERP towards the target input. The `inputSmoothness` factor determines the speed.
         this.smoothedThrustInput +=
             (this.thrustInput - this.smoothedThrustInput) * this.inputSmoothness
         this.smoothedRollInput +=
             (this.rollInput - this.smoothedRollInput) * this.inputSmoothness
 
-        // Prevent tiny values from causing drift
+        // Drift prevention for tiny values
         if (Math.abs(this.smoothedThrustInput) < 0.001)
             this.smoothedThrustInput = 0
         if (Math.abs(this.smoothedRollInput) < 0.001) this.smoothedRollInput = 0
     }
 
     /**
-     * Calculates the desired linear and angular velocities based on smoothed input.
-     * @param currentRotation - The current orientation of the spaceship.
-     * @returns An object containing the target linear and angular velocities.
+     * Calculates desired linear and angular velocities based on inputs.
      */
     private calculateTargetVelocities(currentRotation: Quaternion): {
         targetLinvel: Vector3
         targetAngvel: Vector3
     } {
+        // [CASE A: Joystick / Mouse Pointer Mode]
         if (this.pointerVector) {
-            // 1. 우주선의 현재 worldForward 벡터 (Local X)
             const currentHeading = new Vector3(1, 0, 0).applyQuaternion(
                 currentRotation,
             )
 
-            // 2. 타겟 방향 각도 (포인터 벡터로부터 계산)
+            // 1. Rotation (Angular Velocity)
+            // Calculate angle difference between current heading and pointer direction
             const targetAngle = Math.atan2(
                 -this.pointerVector.y,
                 this.pointerVector.x,
             )
-
-            // 3. 우주선의 현재 각도 (Yaw)
             const currentEuler = new Euler().setFromQuaternion(
                 currentRotation,
                 "YXZ",
             )
-            const currentAngle = currentEuler.y
-            // 4. 각도 차이(Angle Delta) 계산 (-PI ~ PI 범위로 정규화)
-            let angleDiff = targetAngle - currentAngle
-            while (angleDiff > Math.PI) {
-                angleDiff -= Math.PI * 2
-            }
-            while (angleDiff < -Math.PI) {
-                angleDiff += Math.PI * 2
-            }
-            // 5. Angular Velocity (회전) 설정: 각도 차이에 비례하여 정해진 turnSpeed로 회전
+
+            let angleDiff = targetAngle - currentEuler.y
+            // Normalize angle to -PI ~ PI
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2
+
             const targetAngvel = new Vector3(
                 0,
                 angleDiff * MathUtils.degToRad(this.turnSpeed),
                 0,
             )
-            // 6. Linear Velocity (전진): 포인터 거리(강도)에 비례하여 worldForward 방향으로 전진
-            const thrust = this.pointerVector.length()
+
+            // 2. Movement (Linear Velocity)
+            const rawThrust = this.pointerVector.length()
+            const thrust = this.thrustEnabled ? rawThrust : 0
             const targetLinvel = currentHeading
                 .clone()
                 .multiplyScalar(thrust * this.maxSpeed)
+
             return { targetLinvel, targetAngvel }
         }
-        // Target linear velocity (using smoothed input)
+
+        // [CASE B: Keyboard Mode]
         const localForward = new Vector3(1, 0, 0)
         const worldForward = localForward
             .clone()
             .applyQuaternion(currentRotation)
+
+        // Linear Velocity based on 'W/S' keys
         const targetLinvel = worldForward.multiplyScalar(
             this.smoothedThrustInput * this.maxSpeed,
         )
 
-        // Target angular velocity (using smoothed input)
+        // Angular Velocity based on 'A/D' keys
         const targetAngvel = new Vector3(
             0,
             -this.smoothedRollInput * MathUtils.degToRad(this.turnSpeed),
@@ -184,12 +223,6 @@ export class FlightController {
         return { targetLinvel, targetAngvel }
     }
 
-    /**
-     * Calculates the corrective force to apply to move from current to target linear velocity.
-     * @param targetVelocity - The desired linear velocity.
-     * @param currentVelocity - The current linear velocity.
-     * @returns The force vector to apply.
-     */
     private calculateCorrectiveForce(
         targetVelocity: Vector3,
         currentVelocity: Vector3,
@@ -198,16 +231,9 @@ export class FlightController {
             targetVelocity,
             currentVelocity,
         )
-        const correctiveForce = velocityError.multiplyScalar(this.forceFactor)
-        return correctiveForce
+        return velocityError.multiplyScalar(this.forceFactor)
     }
 
-    /**
-     * Calculates the corrective torque to apply to move from current to target angular velocity.
-     * @param targetVelocity - The desired angular velocity.
-     * @param currentVelocity - The current angular velocity.
-     * @returns The torque vector to apply.
-     */
     private calculateCorrectiveTorque(
         targetVelocity: Vector3,
         currentVelocity: Vector3,
@@ -216,35 +242,40 @@ export class FlightController {
             targetVelocity,
             currentVelocity,
         )
-        const correctiveTorque = velocityError.multiplyScalar(this.torqueFactor)
-        return correctiveTorque
+        return velocityError.multiplyScalar(this.torqueFactor)
     }
 
-    // --- Getter/Setter for TweakPane ---
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 🔧 GETTERS / SETTERS (For TweakPane)
+    // ─────────────────────────────────────────────────────────────────────────────
     public setMaxSpeed(speed: number): void {
         this.maxSpeed = speed
     }
     public getMaxSpeed(): number {
         return this.maxSpeed
     }
+
     public setTurnSpeed(speed: number): void {
         this.turnSpeed = speed
     }
     public getTurnSpeed(): number {
         return this.turnSpeed
     }
+
     public setForceFactor(factor: number): void {
         this.forceFactor = factor
     }
     public getForceFactor(): number {
         return this.forceFactor
     }
+
     public setTorqueFactor(factor: number): void {
         this.torqueFactor = factor
     }
     public getTorqueFactor(): number {
         return this.torqueFactor
     }
+
     public setInputSmoothness(smoothness: number): void {
         this.inputSmoothness = smoothness
     }
@@ -262,11 +293,3 @@ export class FlightController {
         return this.smoothedThrustInput
     }
 }
-
-// feat : FlightController 입력 보간 및 포인터 기반 스티어링 기능 구현
-
-// - FlightController: 입력 값의 급격한 변화를 방지하기 위한 LERP 기반 Smoothing 로직 추가
-// - Pointer Steering: 포인터 및 조이스틱 벡터를 추적하여 우주선의 회전 방향을 제어하는 로직 구현
-// - 구조 개선: Target Velocity 및 물리 힘(Force/Torque) 계산 로직을 메서드로 분리하여 모듈화
-// - 시각 효과 연동: 보간된 추진력 값을 추출하는 접근자를 추가하여 우주선 엔진 화염 애니메이션과 연동
-// - TweakPane 지원: 비행 파라미터(속도, 회전, 민감도 등) 조정을 위한 Getter/Setter 구성
