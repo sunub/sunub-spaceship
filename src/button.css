@@ -1,0 +1,227 @@
+.warp-button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.875rem 2.5rem;
+    border-radius: 9999px;
+
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-family: inherit;
+
+    transition: all 0.5s ease;
+    border: 2px solid transparent;
+}
+
+.warp-button:not(:disabled) {
+    cursor: pointer;
+    color: #ffffff;
+    background-image:
+        linear-gradient(#020617, #020617),
+        linear-gradient(to right, #6366f1, #a855f7);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+.warp-button:not(:disabled):hover {
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
+    transform: scale(1.05);
+}
+
+.warp-button:not(:disabled)::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+        circle at center,
+        rgba(168, 85, 247, 0.3) 0%,
+        transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    z-index: 0;
+}
+
+.warp-button:not(:disabled):hover::before {
+    opacity: 1;
+}
+
+.warp-button:disabled {
+    cursor: not-allowed;
+    background: transparent;
+    border-color: #334155;
+    color: rgba(255, 255, 255, 0.4);
+    box-shadow: none;
+}
+
+.warp-button:disabled .material-symbols-outlined {
+    opacity: 0.6;
+}
+
+.warp-button span {
+    position: relative;
+    z-index: 10;
+}
+
+.mute-btn {
+    background: none;
+    border: none;
+    color: var(--col-lavender);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    transition: color 0.3s;
+}
+
+.mute-btn:hover {
+    color: #ff00ff;
+}
+
+.btn-glass {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    border-radius: 9999px;
+    transition: all 0.5s;
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.2);
+}
+
+.btn-glow {
+    position: absolute;
+    inset: -0.125rem;
+    background: linear-gradient(to right, #818cf8, #c084fc, #818cf8);
+    border-radius: 9999px;
+    filter: blur(4px);
+    opacity: 0.3;
+    transition: opacity 0.5s;
+    animation: entry-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.btn-text-span {
+    position: relative;
+    z-index: 10;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    color: white;
+    display: inline-block;
+    transition: transform 0.3s;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.btn-border {
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 9999px;
+    transition: border-color 0.3s;
+}
+
+@keyframes button-pulse-sync {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    }
+    50% {
+        box-shadow: 0 0 20px 5px rgba(139, 92, 246, 0.3);
+    }
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 0.4;
+    }
+    50% {
+        opacity: 0.2;
+    }
+}
+
+.enter-btn {
+    position: relative;
+    width: 100%;
+    padding: 1.5rem 3rem;
+    margin-top: 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 9999px;
+    cursor: pointer;
+    animation: button-pulse-sync 4s ease-in-out infinite;
+    isolation: isolate;
+}
+
+.enter-btn__glass {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 500ms;
+}
+
+.enter-btn:hover .enter-btn__glass {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.enter-btn__glow {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    bottom: -2px;
+    left: -2px;
+    border-radius: 9999px;
+    background: linear-gradient(to right, #6366f1, #a855f7, #6366f1);
+    filter: blur(8px);
+    opacity: 0.4;
+    transition: opacity 500ms;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.enter-btn:hover .enter-btn__glow {
+    opacity: 0.8;
+}
+
+.enter-btn__text {
+    position: relative;
+    z-index: 10;
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: white;
+    padding-left: 0.25rem;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6));
+    transition: transform 300ms;
+}
+
+@media (min-width: 640px) {
+    .enter-btn__text {
+        font-size: 0.875rem;
+    }
+}
+
+.enter-btn:hover .enter-btn__text {
+    transform: scale(1.05);
+}
+
+.enter-btn__border {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: border-color 300ms;
+}
+
+.enter-btn:hover .enter-btn__border {
+    border-color: rgba(255, 255, 255, 0.3);
+}
