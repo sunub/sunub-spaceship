@@ -8,6 +8,7 @@ export interface ProjectData {
     url: string
     tags: string[]
     position: THREE.Vector3
+    image?: string
 }
 
 export class ProjectRegistry {
@@ -30,21 +31,31 @@ export class ProjectRegistry {
         // 플레이스홀더 데이터를 초기화합니다.
         this.projects.push(
             {
-                id: "threejs-journey",
-                title: "Three.js Journey",
+                id: "sunub-blog",
+                title: "Sunub Blog",
                 description:
-                    "The best way to learn Three.js. Comprehensive course from basics to advanced shaders.",
-                url: "https://threejs-journey.com",
-                tags: ["Education", "Three.js", "WebGL"],
+                    "AWS 인프라 기반의 CI/CD 파이프라인과 성능 최적화를 적용하여 직접 배포·운영 중인 풀스택 블로그 프로젝트",
+                url: "https://sunub.site/",
+                tags: [
+                    "React",
+                    "TypeScript",
+                    "Next.js",
+                    "NestJS",
+                    "MDX",
+                    "Vitest",
+                    "Framer-motion",
+                    "Styled-Components",
+                    "Playwright",
+                ],
                 position: this.projectPosition,
             },
             {
-                id: "chartogne-taillet",
-                title: "Chartogne Taillet",
+                id: "github",
+                title: "Github Page",
                 description:
-                    "A premium 3D experience for a prestigious Champagne house.",
-                url: "https://chartogne-taillet.com",
-                tags: ["Luxury", "Experience", "SVG"],
+                    "sunub가 작업 중인 프로젝트들을 확인 할 수 있습니다.",
+                url: "https://github.com/sunub",
+                tags: [],
                 position: new THREE.Vector3(-12, 0, 28),
             },
         )
