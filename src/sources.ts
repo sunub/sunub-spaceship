@@ -5,31 +5,36 @@ import type { Source } from "./utils/Resources"
 export const modelSources = [
     ["floorModel", "gltfModel", "/models/floor/floor-compressed.glb"],
     ["spaceshipModel", "gltfModel", "/models/player/spaceship-compressed.glb"],
-    ["grassModel", "gltfModel", "/models/floor/grass-compressed.glb"],
     ["mountainModel", "gltfModel", "/models/floor/mountain-compressed.glb"],
-    ["crystalModel", "gltfModel", "/models/groud/crystal-compressed.glb"],
+    [
+        "mountainOutlinerModel",
+        "gltfModel",
+        "/models/ground/mountain_outliner-compressed.glb",
+    ],
+    ["grassModel", "gltfModel", "/models/floor/grass-compressed.glb"],
+    ["crystalModel", "gltfModel", "/models/ground/crystal-compressed.glb"],
     [
         "treeLightsModel",
         "gltfModel",
-        "/models/groud/tree_lights-compressed.glb",
+        "/models/ground/tree_lights-compressed.glb",
     ],
-    ["crystalBase", "gltfModel", "/models/groud/crystal_base-compressed.glb"],
+    ["crystalBase", "gltfModel", "/models/ground/crystal_base-compressed.glb"],
     [
         "floatCrystalModel",
         "gltfModel",
-        "/models/groud/float_crystal-compressed.glb",
+        "/models/ground/float_crystal-compressed.glb",
     ],
     [
         "brightCrystalModel",
         "gltfModel",
-        "/models/groud/bright_crystal-compressed.glb",
+        "/models/ground/bright_crystal-compressed.glb",
     ],
     [
         "crystalStructure",
         "gltfModel",
-        "/models/groud/crystal_structure-compressed.glb",
+        "/models/ground/crystal_structure-compressed.glb",
     ],
-    ["githubModel", "gltfModel", "/models/groud/github-compressed.glb"],
+    ["githubModel", "gltfModel", "/models/ground/github-compressed.glb"],
 ] as Source[]
 
 export const textureSources = [
@@ -47,20 +52,7 @@ export const textureSources = [
             source.wrapT = ClampToEdgeWrapping
         },
     ],
-    [
-        "treeLightsTexture",
-        "ktx2",
-        "/texture/tree_light/baked_tree_light.ktx2",
-        (source: Texture) => {
-            source.flipY = false
-            source.colorSpace = SRGBColorSpace
-            source.minFilter = LinearFilter
-            source.magFilter = LinearFilter
-            source.generateMipmaps = false
-            source.wrapS = ClampToEdgeWrapping
-            source.wrapT = ClampToEdgeWrapping
-        },
-    ],
+
     [
         "floatCrystalTexture",
         "ktx2",
@@ -92,7 +84,7 @@ export const textureSources = [
     [
         "floorTexture",
         "ktx2",
-        "/texture/floor/floor.ktx2",
+        "/texture/floor/baked_floor.ktx2",
         (source: Texture) => {
             source.flipY = false
             source.colorSpace = SRGBColorSpace
@@ -118,7 +110,7 @@ export const textureSources = [
         },
     ],
     ["terrainGrassTexture", "ktx2", "/texture/terrainGrass/terrainGrass.ktx2"],
-    ["treeLights", "gltfModel", "/models/groud/tree_lights-compressed.glb"],
+    ["treeLights", "gltfModel", "/models/ground/tree_lights-compressed.glb"],
 ] as Source[]
 
 export const entrySources = [
@@ -145,4 +137,32 @@ export const entrySources = [
         "/models/sky/spaceship_entry_title-compressed.glb",
     ],
     ["behindeTheScene", "ktx2", "/texture/behindTheScene/stars.ktx2"],
+    [
+        "treeLightsTexture",
+        "ktx2",
+        "/texture/tree_light/baked_tree_light.ktx2",
+        (source: Texture) => {
+            source.flipY = false
+            source.colorSpace = SRGBColorSpace
+            source.minFilter = LinearFilter
+            source.magFilter = LinearFilter
+            source.generateMipmaps = false
+            source.wrapS = ClampToEdgeWrapping
+            source.wrapT = ClampToEdgeWrapping
+        },
+    ],
+    [
+        "atmosphereTreeLightsTexture",
+        "ktx2",
+        "/texture/atmosphereTreeLight/baked_atmosphere_tree_lights.ktx2",
+        (source: Texture) => {
+            source.flipY = false
+            source.colorSpace = SRGBColorSpace
+            source.minFilter = LinearFilter
+            source.magFilter = LinearFilter
+            source.generateMipmaps = false
+            source.wrapS = ClampToEdgeWrapping
+            source.wrapT = ClampToEdgeWrapping
+        },
+    ],
 ] as Source[]
