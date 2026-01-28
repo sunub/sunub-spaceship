@@ -20,7 +20,7 @@ import { EngineFlame } from "../../EngineFlame"
 import { SpaceShipCameraDebugModule } from "../debug/SpaceShip.CameraDebug"
 import { SpaceShipPositionDebugModule } from "../debug/SpaceShip.PositionDebug"
 import { SpaceShipVisualDebugModule } from "../debug/SpaceShip.VisualDebug"
-import { JoyStick } from "./JoyStick"
+import { JoyStick } from "@/widgets/controllers/JoyStick"
 
 export class SpaceShip extends BaseModel {
     // ─────────────────────────────────────────────────────────────────────────────
