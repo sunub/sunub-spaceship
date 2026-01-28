@@ -1,5 +1,6 @@
 import type * as RAPIER from "@dimforge/rapier3d-compat"
 import type { Audio } from "@/widgets/Audio"
+import type { Game } from "@/widgets/Game"
 import type { Lighting } from "@/widgets/Lighting"
 import type { InputManager } from "../Inputs/InputManager"
 import type Resources from "../utils/Resources"
@@ -28,6 +29,7 @@ export interface GameContext {
     lighting: Lighting
     rapier: typeof RAPIER
     audio: Audio
+    game: Game
 }
 
 export interface IGameObject {
