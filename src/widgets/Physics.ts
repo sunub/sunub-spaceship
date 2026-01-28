@@ -18,6 +18,8 @@ export class Physics extends EventEmitter {
         this.world = new context.rapier.World(GRAVITY)
         this.debug = new PhysicsDebug(this.world)
         this.isInitialized = true
+        // 디버깅 기능
+        // context.scene.add(this.debug.lineSegments)
     }
 
     step(): void {
