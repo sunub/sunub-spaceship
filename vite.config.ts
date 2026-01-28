@@ -28,6 +28,8 @@ export default defineConfig({
 		modulePreload: {
 			polyfill: true,
 		},
+		cssMinify: true,
+		cssCodeSplit: true,
 		rollupOptions: {
 			input: {
 				main: path.resolve(__dirname, "index.html"),
