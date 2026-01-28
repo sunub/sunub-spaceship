@@ -1,4 +1,5 @@
 import gsap from "gsap"
+import type { GameContext } from "@/core/GameContext"
 import type { ProjectData } from "@/core/ProjectRegistry"
 
 export class TerminalOverlay {
@@ -6,21 +7,24 @@ export class TerminalOverlay {
     private isVisible: boolean = false
     private isHiding: boolean = false
 
-    constructor() {
+    constructor(private context: GameContext) {
         this.element = document.createElement("main")
         this.element.id = "project-terminal"
+        // CSS의 .main-content 스타일을 활용하기 위해 클래스 추가
         this.element.className = "main-content"
 
+        // 오버레이를 위한 필수 스타일 (CSS 파일에 없는 경우를 대비해 고정값 설정)
         this.element.style.position = "fixed"
         this.element.style.top = "0"
         this.element.style.left = "0"
         this.element.style.width = "100%"
         this.element.style.height = "100%"
         this.element.style.zIndex = "1000"
-        this.element.style.display = "none"
+        this.element.style.display = "none" // 초기에는 숨김
 
-        this.element.style.background = "rgba(0, 0, 0, 0.4)"
-        this.element.style.backdropFilter = "blur(10px)"
+        // 배경 흐림 효과 (CSS의 .terminal-header 등과 겹치지 않게 오버레이 전용 배경)
+        this.element.style.backgroundColor = "rgba(1, 1, 31, 0.8)" // --col-bg-body 기반 투명도
+        this.element.style.backdropFilter = "blur(8px)"
 
         document.body.appendChild(this.element)
     }
@@ -83,10 +87,13 @@ export class TerminalOverlay {
                             </div>
                         </div>
                         <div class="action-buttons">
-                            <button class="btn btn-primary launch-btn">Launch Project</button>
                             <button class="btn btn-outline back-btn">
                                 <span class="material-symbols-outlined">arrow_back</span>
                                 Back to Flight
+                            </button>
+                            <button class="btn btn-primary launch-btn">
+                                <span class="material-symbols-outlined">rocket_launch</span>
+                                Launch Project
                             </button>
                         </div>
                     </div>
@@ -127,6 +134,7 @@ export class TerminalOverlay {
         if (!this.isVisible || this.isHiding) return
 
         this.isHiding = true
+        this.context.game.spaceShip.joyStick.unlock()
 
         const content = this.element.querySelector(".glass-card") as HTMLElement
 
@@ -134,18 +142,23 @@ export class TerminalOverlay {
             gsap.to(content, {
                 opacity: 0,
                 scale: 0.9,
+                y: 20,
                 duration: 0.3,
+                ease: "power2.in",
                 overwrite: true,
                 onComplete: () => {
                     this.element.style.display = "none"
                     this.isVisible = false
                     this.isHiding = false
+                    // 내용 비우기 (메모리 관리 및 다음 오픈 시 깜빡임 방지)
+                    this.element.innerHTML = ""
                 },
             })
         } else {
             this.element.style.display = "none"
             this.isVisible = false
             this.isHiding = false
+            this.element.innerHTML = ""
         }
     }
 

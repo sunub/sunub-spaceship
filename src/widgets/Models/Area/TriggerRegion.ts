@@ -21,6 +21,7 @@ export class TriggerRegion extends EventEmitter implements IGameObject {
     constructor(
         private position: Vector3,
         private size: Vector3,
+        name: string,
         color: number = 0x00ff00,
         visible: boolean = false,
     ) {
@@ -34,6 +35,7 @@ export class TriggerRegion extends EventEmitter implements IGameObject {
                 visible: visible,
             }),
         )
+        this.mesh.name = name
         this.mesh.position.copy(position)
     }
 
@@ -50,6 +52,7 @@ export class TriggerRegion extends EventEmitter implements IGameObject {
         )
             .setTranslation(this.position.x, this.position.y, this.position.z)
             .setSensor(true)
+        colliderDesc.setCollisionGroups((0x0001 << 16) | 0xffff)
 
         this.sensor = context.physics.world.createCollider(colliderDesc)
     }

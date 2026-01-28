@@ -18,7 +18,8 @@ export class ProjectHUD {
         this.element.style.border = "1px solid rgba(255, 255, 255, 0.2)"
         this.element.style.boxShadow = "0 4px 15px rgba(0, 0, 0, 0.3)"
         this.element.style.opacity = "0"
-        this.element.style.pointerEvents = "none"
+        this.element.style.pointerEvents = "auto"
+        this.element.style.cursor = "pointer"
         this.element.style.textAlign = "center"
         this.element.style.transform = "translateY(10px)"
         this.element.style.transition = "transform 0.3s ease-out"
@@ -60,5 +61,12 @@ export class ProjectHUD {
         if (hint) {
             hint.style.opacity = ready ? "1" : "0"
         }
+    }
+
+    public onInteract(callback: () => void) {
+        this.element.addEventListener("pointerdown", (e) => {
+            e.stopPropagation()
+            callback()
+        })
     }
 }
