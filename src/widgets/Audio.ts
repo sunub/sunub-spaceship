@@ -18,7 +18,7 @@ const PLAYLIST_CONFIG = [
     {
         path: "sounds/engine_thrusterFire.aac",
         name: "engine",
-        volume: 0.2,
+        volume: 0.1,
         loop: true,
         html5: false,
     },
@@ -43,12 +43,22 @@ export type Songs = Record<SoundName, SoundItem>
 export class Audio {
     public songs: Partial<Songs> = {}
     public mute: { active: boolean } = { active: false }
+    public volume: number = 0.5
 
     constructor() {
         this.initialize()
     }
 
     async initialize() {
+        const savedVolume = localStorage.getItem("volumeLevel")
+        const savedMute = localStorage.getItem("soundToggle")
+
+        this.volume = savedVolume ? parseFloat(savedVolume) : 0.5
+        this.mute.active = savedMute === "1"
+
+        Howler.volume(this.volume)
+        Howler.mute(this.mute.active)
+
         this.setPlaylist()
     }
 
@@ -79,20 +89,70 @@ export class Audio {
     }
 
     public handleSoundControl() {
-        // 슬라이더 움직임에 따라 파동 위치 업데이트
         const input = document.querySelector(
             ".volume-input",
         ) as HTMLInputElement
-        this.updateWavePosition(input)
+        const wrapper = document.querySelector(".slider-wrapper") as HTMLElement
+        const waveOrigin = document.getElementById("wave-origin") as HTMLElement
+
+        if (input && wrapper && waveOrigin) {
+            input.value = (this.volume * 100).toString()
+            this.updateWavePosition(input, waveOrigin)
+
+            const startInteraction = () => {
+                wrapper.classList.add("active")
+                this.updateWavePosition(input, waveOrigin)
+            }
+
+            const endInteraction = () => {
+                wrapper.classList.remove("active")
+            }
+
+            input.addEventListener("mousedown", startInteraction)
+            input.addEventListener("touchstart", startInteraction, {
+                passive: true,
+            })
+
+            input.addEventListener("mouseup", endInteraction)
+            input.addEventListener("touchend", endInteraction)
+
+            input.addEventListener("input", (e) => {
+                const target = e.target as HTMLInputElement
+                const value = parseFloat(target.value) / 100
+
+                this.volume = value
+                Howler.volume(value)
+                localStorage.setItem("volumeLevel", value.toString())
+
+                this.updateWavePosition(target, waveOrigin)
+
+                if (value > 0 && this.mute.active) {
+                    this.muteDeactivate()
+                    const muteBtn = document.querySelector(
+                        ".mute-btn",
+                    ) as HTMLElement
+                    this.updateMuteIcon(muteBtn)
+                }
+            })
+        }
 
         const button = document.querySelector(".mute-btn") as HTMLElement
-        this.toggleMute(button)
+        if (button) {
+            this.updateMuteIcon(button)
+
+            button.addEventListener("click", () => {
+                if (this.mute.active) {
+                    this.muteDeactivate()
+                } else {
+                    this.muteActivate()
+                }
+                this.updateMuteIcon(button)
+            })
+        }
     }
 
     public muteActivate() {
-        if (this.mute.active) {
-            return
-        }
+        if (this.mute.active) return
 
         Howler.mute(true)
         this.mute.active = true
@@ -100,29 +160,34 @@ export class Audio {
     }
 
     public muteDeactivate() {
-        if (!this.mute.active) {
-            return
-        }
+        if (!this.mute.active) return
 
         Howler.mute(false)
         this.mute.active = false
         localStorage.setItem("soundToggle", "0")
     }
 
-    private updateWavePosition(input: HTMLInputElement) {
-        const wave_origin = document.getElementById(
-            "wave-origin",
-        ) as HTMLElement
-        wave_origin.style.left = `${input.value}%`
+    private updateWavePosition(
+        input: HTMLInputElement,
+        waveOrigin: HTMLElement,
+    ) {
+        if (waveOrigin) {
+            const val = parseFloat(input.value)
+            // Thumb width(12px)를 고려한 중앙 정렬 계산: calc(${val}% + (${6 - 12 * val / 100}px))
+            const offset = 6 - (12 * val) / 100
+            waveOrigin.style.left = `calc(${val}% + ${offset}px)`
+        }
     }
 
-    // 아이콘 토글 (Mute/Unmute)
-    private toggleMute(btn: HTMLElement) {
+    private updateMuteIcon(btn: HTMLElement | null) {
+        if (!btn) return
+
         const icon = btn.querySelector(
             ".material-symbols-outlined",
         ) as HTMLElement
-        icon.innerText =
-            icon.innerText === "volume_up" ? "volume_off" : "volume_up"
+        if (icon) {
+            icon.innerText = this.mute.active ? "volume_off" : "volume_up"
+        }
     }
 
     public update(_: number) {}
