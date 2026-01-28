@@ -40,6 +40,20 @@ export class Grass extends BaseModel {
         this.params = { ...this.params, ...options }
     }
 
+    private initGrass(surfaceMesh: Mesh) {
+        this.setGeometry()
+        this.setMaterial()
+
+        if (this.geometry && this.grassMaterial) {
+            this.grassMesh = new Mesh(this.geometry, this.grassMaterial)
+            this.grassMesh.frustumCulled = false
+            this.grassMesh.castShadow = true
+            this.grassMesh.receiveShadow = true
+
+            this.plantGrass(surfaceMesh)
+        }
+    }
+
     protected setupModelStructure(clonedModel: Object3D): void {
         this.modelGroup = new Object3D()
         this.modelGroup.name = `${this.modelName}Group`
@@ -57,27 +71,11 @@ export class Grass extends BaseModel {
             return
         }
 
-        // Create Sampler
         this.sampler = new MeshSurfaceSampler(surfaceMesh as Mesh).build()
-
         this.initGrass(surfaceMesh as Mesh)
 
         if (this.grassMesh) {
             this.modelGroup.add(this.grassMesh)
-        }
-    }
-
-    private initGrass(surfaceMesh: Mesh) {
-        this.setGeometry()
-        this.setMaterial()
-
-        if (this.geometry && this.grassMaterial) {
-            this.grassMesh = new Mesh(this.geometry, this.grassMaterial)
-            this.grassMesh.frustumCulled = false
-            this.grassMesh.castShadow = true
-            this.grassMesh.receiveShadow = true
-
-            this.plantGrass(surfaceMesh)
         }
     }
 

@@ -28,7 +28,7 @@ export class Birds implements IGameObject {
     private modelGroup: THREE.Group
 
     // --- 설정 값 ---
-    private WIDTH = 32 // 32*32 = 1024마리
+    private WIDTH = 16 // 32*32 = 1024마리
     private COUNT = this.WIDTH * this.WIDTH
 
     // 비행 구역 (직육면체)

@@ -1,6 +1,5 @@
-import { color, texture } from "three/tsl"
 import * as THREE from "three/webgpu"
-import { MeshDefaultMaterial } from "../../Materials/MeshDefaultMaterial"
+import { CrystalMaterial } from "@/widgets/Materials/CrystalMaterial"
 import { BaseModel } from "../BaseModel"
 
 export class BrightCrystal extends BaseModel {
@@ -55,41 +54,19 @@ export class BrightCrystal extends BaseModel {
         }
 
         instancesMap.forEach((data, _) => {
-            const { geometry, originalMaterial, matrices } = data
-
-            const materialParams: any = {}
-
-            if (originalMaterial.map) {
-                materialParams.colorNode = texture(originalMaterial.map)
-            } else if (originalMaterial.color) {
-                materialParams.colorNode = color(originalMaterial.color)
-            }
-            if (originalMaterial.emissive) {
-                let emissionNode = null
-                if (originalMaterial.emissiveMap) {
-                    emissionNode = texture(originalMaterial.emissiveMap)
-                } else {
-                    emissionNode = color(originalMaterial.emissive)
-                }
-
-                if (originalMaterial.emissiveIntensity !== undefined) {
-                    emissionNode = emissionNode.mul(
-                        originalMaterial.emissiveIntensity,
-                    )
-                }
-
-                materialParams.emissionNode = emissionNode
-            }
-
-            if (originalMaterial.transparent) {
-                materialParams.transparent = true
-            }
-
-            const customMaterial = new MeshDefaultMaterial(materialParams)
+            const { geometry, matrices } = data
+            const crystalMat = new CrystalMaterial({
+                color: 0x7641ed, // 베이스
+                coreColor: 0xb9abff, // 에너지
+                rimColor: 0xffffff, // 가장자리
+                noiseScale: 1.5,
+                flowSpeed: 0.5, // 에너지가 흐르는 속도
+            })
+            crystalMat.emissiveMap
 
             const instancedMesh = new THREE.InstancedMesh(
                 geometry,
-                customMaterial,
+                crystalMat,
                 matrices.length,
             )
             instancedMesh.castShadow = true
