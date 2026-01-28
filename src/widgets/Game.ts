@@ -23,6 +23,7 @@ import {
     Github,
     Grass,
     Mountain,
+    MountainOutliner,
     SpaceShip,
     TreeLights,
 } from "./Models"
@@ -30,7 +31,8 @@ import { ProjectOutpost } from "./Models/ProjectOutpost"
 import { Physics } from "./Physics"
 import { Rendering } from "./Rendering"
 import { Scene } from "./Scene"
-// import { TerminalOverlay } from "./UI/TerminalOverlay"
+import { Notification } from "./UI/Notification"
+import { TerminalOverlay } from "./UI/TerminalOverlay"
 
 export class Game {
     public isReady: boolean = false
@@ -57,6 +59,7 @@ export class Game {
     public entry!: Entry
     public rapier!: typeof RAPIER
     public audio!: Audio
+    public notification!: Notification
 
     // Game Objects & Controllers 관리
     private gameObjects: IGameObject[] = []
@@ -65,9 +68,9 @@ export class Game {
     public spaceShip!: SpaceShip
     private isRendering = false
 
-    // private terminalOverlay!: TerminalOverlay
-    // private lastInteractionTime: number = 0
-    // private readonly INTERACTION_COOLDOWN: number = 500
+    private terminalOverlay!: TerminalOverlay
+    private lastInteractionTime: number = 0
+    private readonly INTERACTION_COOLDOWN: number = 500
 
     static getInstance(): Game {
         if (!Game.instance) {
@@ -77,6 +80,25 @@ export class Game {
     }
 
     private constructor() {}
+
+    get sceneObjects() {
+        return [
+            new Floor(),
+            new Mountain(),
+            new MountainOutliner(),
+            new Grass({
+                count: 50000,
+                width: 0.25,
+                height: 1.0,
+            }),
+            new TreeLights(),
+            new FloatCrystal(),
+            new BrightCrystal(),
+            new CrystalStructure(),
+            new Birds(),
+            new Github(),
+        ]
+    }
 
     public async init() {
         this.domElement = document.querySelector(".root") as HTMLDivElement
@@ -90,9 +112,9 @@ export class Game {
         this.camera = new Camera()
         this.physics = new Physics()
         this.inputManager = InputManager.getInstance()
-        // this.terminalOverlay = new TerminalOverlay()
         this.resources = new Resources()
         this.audio = new Audio()
+        this.audio.handleSoundControl()
         this.registerAllServices()
 
         this.rendering = new Rendering()
@@ -102,6 +124,8 @@ export class Game {
 
         const gameContext = this.getContext()
         this.entry = new Entry(gameContext)
+        this.terminalOverlay = new TerminalOverlay(gameContext)
+        this.notification = new Notification()
         await this.entry.init()
     }
 
@@ -126,6 +150,12 @@ export class Game {
         const projectObjectsPromises = projects.map(async (projectData) => {
             const outpost = new ProjectOutpost(projectData)
             await outpost.initialize(context)
+            outpost.setOnInteraction(() => {
+                this.handleInteraction()
+            })
+            if (this.spaceShip?.rigidBody) {
+                outpost.setTrackingTarget(this.spaceShip.rigidBody)
+            }
             this.addGameObject(outpost)
             this.projectOutposts.push(outpost)
         })
@@ -141,6 +171,10 @@ export class Game {
     public async startGame() {
         this.isReady = true
         this.audio.play("background")
+        this.notification.show(
+            "조작키를 사용하여 우주선을 조작해 프로젝트 영역을 찾아주세요",
+            5000,
+        )
         this.drawControlIndicators()
         if (this.camera && this.spaceShip && this.spaceShip.shipPivot) {
             const targetPos = this.spaceShip.shipPivot.getWorldPosition(
@@ -218,25 +252,8 @@ export class Game {
             lighting: this.lighting,
             rapier: this.rapier,
             audio: this.audio,
+            game: this,
         }
-    }
-
-    get sceneObjects() {
-        return [
-            new Floor(),
-            new Mountain(),
-            new Grass({
-                count: 50000,
-                width: 0.25,
-                height: 1.0,
-            }),
-            new TreeLights(),
-            new FloatCrystal(),
-            new BrightCrystal(),
-            new CrystalStructure(),
-            new Birds(),
-            new Github(),
-        ]
     }
 
     public addGameObject(obj: IGameObject): void {
@@ -270,24 +287,32 @@ export class Game {
     public setupEvents() {
         this.time.on("tick", () => this.update())
         this.size.on("resize", () => this.resize())
+
+        this.inputManager.subscribe("Interact", (isPressed) => {
+            if (isPressed) {
+                this.handleInteraction()
+            }
+        })
     }
 
-    // private handleInteraction() {
-    //     const now = Date.now()
-    //     if (now - this.lastInteractionTime < this.INTERACTION_COOLDOWN) {
-    //         return
-    //     }
-    //     this.lastInteractionTime = now
-    //     if (this.terminalOverlay.isOpen) {
-    //         this.terminalOverlay.hide()
-    //         return
-    //     }
+    private handleInteraction() {
+        const now = Date.now()
+        if (now - this.lastInteractionTime < this.INTERACTION_COOLDOWN) {
+            return
+        }
+        this.lastInteractionTime = now
+        if (this.terminalOverlay.isOpen) {
+            this.terminalOverlay.hide()
+            this.spaceShip.joyStick.unlock()
+            return
+        }
 
-    //     const activeOutpost = this.projectOutposts.find((p) => p.isInside)
-    //     if (activeOutpost) {
-    //         this.terminalOverlay.show(activeOutpost.data)
-    //     }
-    // }
+        const activeOutpost = this.projectOutposts.find((p) => p.isInside)
+        if (activeOutpost) {
+            this.terminalOverlay.show(activeOutpost.data)
+            this.spaceShip.joyStick.lock()
+        }
+    }
 
     private async update() {
         if (this.isRendering) {
