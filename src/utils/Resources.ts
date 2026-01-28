@@ -31,6 +31,10 @@ export default class Resources {
         this.registry = ServiceRegistry.getInstance()
     }
 
+    public getItem(name: string) {
+        return this.items[name]
+    }
+
     public async load(
         sources: Source[],
         onProgress?: (loaded: number, total: number) => void,
