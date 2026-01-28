@@ -1,22 +1,24 @@
+import { ColliderDesc, RigidBodyDesc } from "@dimforge/rapier3d-compat"
 import { texture } from "three/tsl"
 import type {
     BufferGeometry,
     Material,
     Matrix4,
     Mesh,
-    MeshStandardMaterial,
     Texture,
 } from "three/webgpu"
 import { InstancedMesh, Object3D, Vector3 } from "three/webgpu"
 import { ServiceRegistry } from "@/core/ServiceRegistry"
 import type Resources from "@/utils/Resources"
-
+import { MeshDefaultMaterial } from "@/widgets/Materials/MeshDefaultMaterial"
+import type { Physics } from "@/widgets/Physics"
 import { BaseModel } from "../BaseModel"
 
 export class TreeLights extends BaseModel {
     private serviceRegistry = ServiceRegistry.getInstance()
     private resources: Resources =
         this.serviceRegistry.get<Resources>("resources")
+    private colliderMeshes: Mesh[] = []
 
     constructor(position: Vector3 = new Vector3(0, 0, 0)) {
         super("treeLightsModel", position)
@@ -54,23 +56,23 @@ export class TreeLights extends BaseModel {
             if ((child as Mesh).isMesh) {
                 const mesh = child as Mesh
                 const geometry = mesh.geometry
-                const material = mesh.material as MeshStandardMaterial
+                const newMat = new MeshDefaultMaterial({
+                    colorNode: texture(treeLightTexture),
+                    emissionNode: texture(treeLightTexture).mul(2.5),
+                    hasCoreShadows: false,
+                    hasLightBounce: false,
+                })
 
-                material.colorNode = texture(treeLightTexture)
-
-                // 지오메트리 ID로 그룹화
                 if (!instancesMap.has(geometry.uuid)) {
                     instancesMap.set(geometry.uuid, {
                         geometry: geometry,
-                        material: material,
+                        material: newMat,
                         matrices: [],
                     })
                 }
 
                 const groupData = instancesMap.get(geometry.uuid)
 
-                // 해당 메쉬의 월드 매트릭스 복제하여 저장
-                // (clonedModel은 Scene에 추가되지 않은 상태이므로, 이 매트릭스는 모델 루트 기준의 변환값과 동일함)
                 if (groupData) {
                     groupData.matrices.push(mesh.matrixWorld.clone())
                 }
@@ -82,7 +84,6 @@ export class TreeLights extends BaseModel {
             return
         }
 
-        // 각 그룹별 InstancedMesh 생성
         instancesMap.forEach((data, _) => {
             const { geometry, material, matrices } = data
 
@@ -91,8 +92,10 @@ export class TreeLights extends BaseModel {
                 material,
                 matrices.length,
             )
+            instancedMesh.name = `${this.modelName}_${geometry.uuid}`
             instancedMesh.castShadow = true
             instancedMesh.receiveShadow = true
+            instancedMesh.frustumCulled = false
             // instancedMesh.instanceMatrix.setUsage(DynamicDrawUsage)
 
             for (let i = 0; i < matrices.length; i++) {
@@ -103,6 +106,81 @@ export class TreeLights extends BaseModel {
             if (this.modelGroup) {
                 this.modelGroup.add(instancedMesh)
             }
+        })
+    }
+
+    protected async setupPhysics(): Promise<void> {
+        if (!this.rigidBody && this.context?.physics && this.mesh) {
+            this.createPhysicsBody(this.context.physics)
+        }
+    }
+
+    private createPhysicsBody(physics: Physics) {
+        if (!this.modelGroup || !this.mesh) {
+            return
+        }
+
+        // Create a fixed rigid body at (0,0,0) with no rotation
+        const rigidBodyDesc = RigidBodyDesc.fixed()
+            .setTranslation(0, 0, 0)
+            .setRotation({ x: 0, y: 0, z: 0, w: 1 })
+
+        this.rigidBody = physics.world.createRigidBody(rigidBodyDesc)
+
+        const targetMeshes =
+            this.colliderMeshes.length > 0 ? this.colliderMeshes : []
+
+        // Fallback if no meshes found in colliderMeshes (unlikely if traverse worked)
+        if (targetMeshes.length === 0) {
+            this.mesh.traverse((c) => {
+                if ((c as Mesh).isMesh) targetMeshes.push(c as Mesh)
+            })
+        }
+
+        targetMeshes.forEach((mesh) => {
+            const geometry = mesh.geometry
+            if (!geometry) return
+
+            // Ensure matrix world is up to date
+            if (this.modelGroup) {
+                this.modelGroup.updateMatrixWorld(true)
+            }
+            mesh.updateMatrixWorld(true)
+
+            const clonedGeom = geometry.clone()
+            clonedGeom.applyMatrix4(mesh.matrixWorld)
+
+            const positions = clonedGeom.attributes.position.array
+            const indices = clonedGeom.index
+                ? clonedGeom.index.array
+                : undefined
+
+            let indicesArray: Uint32Array
+            if (indices) {
+                indicesArray = new Uint32Array(indices)
+            } else {
+                const vertexCount = positions.length / 3
+                indicesArray = new Uint32Array(vertexCount)
+                for (let i = 0; i < vertexCount; i++) {
+                    indicesArray[i] = i
+                }
+            }
+
+            // Create Trimesh Collider
+            const colliderDesc = ColliderDesc.trimesh(
+                positions as Float32Array,
+                indicesArray,
+            )
+
+            colliderDesc.setFriction(1.0)
+            colliderDesc.setRestitution(0.1) // Low restitution for mountains
+            colliderDesc.setCollisionGroups((0x0002 << 16) | 0xffff)
+
+            if (this.rigidBody) {
+                physics.world.createCollider(colliderDesc, this.rigidBody)
+            }
+
+            clonedGeom.dispose()
         })
     }
 

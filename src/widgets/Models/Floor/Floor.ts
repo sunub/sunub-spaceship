@@ -130,7 +130,7 @@ export class Floor extends BaseModel {
 
             colliderDesc.setFriction(1.0)
             colliderDesc.setRestitution(0.1)
-            colliderDesc.setCollisionGroups(0x00020001)
+            colliderDesc.setCollisionGroups((0x0001 << 16) | 0xffff)
 
             if (this.rigidBody) {
                 physics.world.createCollider(colliderDesc, this.rigidBody)
