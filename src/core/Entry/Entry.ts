@@ -36,18 +36,46 @@ export class Entry extends EventEmitter {
     private async loadRemainingAssets() {
         let loadedCount = 0
         const totalCount = modelSources.length + textureSources.length
+
         const gameLoader = document.getElementById(
             "game-loader",
         ) as HTMLProgressElement
+        const loadingPercentage = document.getElementById("loading-percentage")
+        const assetsRemainingLabel = document.getElementById(
+            "assets-remaining-label",
+        )
+        const assetsLoadedCount = document.getElementById("assets-loaded-count")
+        const loadingText = document.getElementById("loading-txt")
+
+        // Initialize display
+        if (assetsLoadedCount) assetsLoadedCount.innerText = `0/${totalCount}`
+        if (assetsRemainingLabel)
+            assetsRemainingLabel.innerText = `Assets Remaining: ${totalCount}`
 
         const onProgress = () => {
             loadedCount++
+            const percent = Math.floor((loadedCount / totalCount) * 100)
+
             if (gameLoader) {
                 gameLoader.removeAttribute("indeterminate")
-                gameLoader.value = loadedCount / totalCount
+                gameLoader.value = percent
             }
-            if (loadedCount >= 1) {
+
+            if (loadingPercentage) {
+                loadingPercentage.innerText = `${percent}%`
+            }
+
+            if (assetsRemainingLabel) {
+                assetsRemainingLabel.innerText = `Assets Remaining: ${totalCount - loadedCount}`
+            }
+
+            if (assetsLoadedCount) {
+                assetsLoadedCount.innerText = `${loadedCount}/${totalCount}`
+            }
+
+            if (loadedCount >= totalCount) {
                 this.loadingAnimation.setLoaded()
+                if (loadingText) loadingText.innerText = "Ready to Launch"
             }
         }
 
@@ -135,8 +163,8 @@ export class Entry extends EventEmitter {
     }
 
     get sceneObjects() {
-        const objects_pos = new Vector3(0, 40, 0)
-        const objects_scale = new Vector3(0.5, 0.5, 0.5)
+        const objects_pos = new Vector3(0, 39, 0)
+        const objects_scale = new Vector3(0.65, 0.65, 0.65)
 
         this.loadingAnimation = new LoadingAnimation(objects_pos)
 
