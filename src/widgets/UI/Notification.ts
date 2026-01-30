@@ -4,7 +4,6 @@ export class Notification {
     private messageElement: HTMLParagraphElement
     private timer: number | null = null
 
-    // HTML Structure Template
     private readonly HTML_TEMPLATE = `
         <div class="toast-glow"></div>
         <div class="toast-container organic-shape">
@@ -13,7 +12,7 @@ export class Notification {
 
             <div class="toast-icon-wrapper">
                 <div class="icon-glow"></div>
-                <span class="material-icons-outlined toast-icon">explore</span>
+                <span class="material-symbols-outlined toast-icon">explore</span>
             </div>
 
             <div class="toast-content">
@@ -33,35 +32,30 @@ export class Notification {
     `
 
     constructor() {
-        // Create Overlay Container
         this.overlay = document.createElement("div")
         this.overlay.className = "notification-overlay hidden"
 
-        // Create Wrapper
         this.wrapper = document.createElement("div")
         this.wrapper.className = "toast-wrapper"
         this.wrapper.setAttribute("role", "alert")
         this.wrapper.setAttribute("aria-live", "assertive")
 
-        // Inject HTML Structure
         this.wrapper.innerHTML = this.HTML_TEMPLATE
 
         this.overlay.appendChild(this.wrapper)
         document.body.appendChild(this.overlay)
 
-        // Cache message element for updates
         this.messageElement = this.wrapper.querySelector(
             ".toast-message",
         ) as HTMLParagraphElement
 
-        // Setup Close Button
         const closeBtn = this.wrapper.querySelector(".toast-close-btn")
         if (closeBtn) {
             closeBtn.addEventListener("click", () => this.hide())
         }
     }
 
-    public show(message: string, duration: number = 5000) {
+    public show(message: string, duration: number = 3000) {
         if (this.timer) {
             clearTimeout(this.timer)
             this.timer = null
