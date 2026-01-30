@@ -171,10 +171,6 @@ export class Game {
     public async startGame() {
         this.isReady = true
         this.audio.play("background")
-        this.notification.show(
-            "조작키를 사용하여 우주선을 조작해 프로젝트 영역을 찾아주세요",
-            5000,
-        )
         this.drawControlIndicators()
         if (this.camera && this.spaceShip && this.spaceShip.shipPivot) {
             const targetPos = this.spaceShip.shipPivot.getWorldPosition(
@@ -199,6 +195,10 @@ export class Game {
                 2.0,
             )
         }
+        this.notification.show(
+            "조작키를 사용하여 우주선을 조작해 프로젝트 영역을 찾아주세요",
+            3000,
+        )
         this.spaceShip.unlock()
     }
 
