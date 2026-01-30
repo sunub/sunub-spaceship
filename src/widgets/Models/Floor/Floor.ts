@@ -28,6 +28,9 @@ export class Floor extends BaseModel {
         })
     }
 
+    private floorWidth: number = 0
+    private floorDepth: number = 0
+
     protected setupModelStructure(clonedModel: Object3D): void {
         this.modelGroup = new Object3D()
         this.modelGroup.name = `${this.modelName}Group`
@@ -35,6 +38,11 @@ export class Floor extends BaseModel {
         this.mesh = clonedModel
 
         const box = new Box3().setFromObject(clonedModel)
+        const size = new Vector3()
+        box.getSize(size)
+        this.floorWidth = size.x
+        this.floorDepth = size.z
+
         const centerOffset = box.getCenter(new Vector3())
 
         this.mesh.position.set(-centerOffset.x, -box.min.y, -centerOffset.z)
@@ -83,6 +91,7 @@ export class Floor extends BaseModel {
 
         this.rigidBody = physics.world.createRigidBody(rigidBodyDesc)
 
+        // 1. 바닥(Floor) Collider 생성
         const targetMeshes =
             this.colliderMeshes.length > 0 ? this.colliderMeshes : []
 
@@ -137,6 +146,71 @@ export class Floor extends BaseModel {
             }
 
             clonedGeom.dispose()
+        })
+
+        // 2. 가장자리 벽(Invisible Walls) Collider 생성
+        this.createBoundaryColliders(physics)
+    }
+
+    private createBoundaryColliders(physics: Physics) {
+        if (!this.rigidBody) return
+
+        const wallHeight = 500
+        const wallThickness = 10
+        const halfWidth = this.floorWidth / 2
+        const halfDepth = this.floorDepth / 2
+        const halfHeight = wallHeight / 2
+        const halfThickness = wallThickness / 2
+
+        // Wall configurations: [hx, hy, hz, x, y, z]
+        // RAPIER cuboid takes half-extents
+        const walls = [
+            // North (+Z)
+            {
+                hx: halfWidth + wallThickness, // 코너 빈틈 방지를 위해 조금 더 길게
+                hy: halfHeight,
+                hz: halfThickness,
+                x: 0,
+                y: halfHeight - 10, // 바닥보다 조금 아래에서 시작
+                z: halfDepth + halfThickness,
+            },
+            // South (-Z)
+            {
+                hx: halfWidth + wallThickness,
+                hy: halfHeight,
+                hz: halfThickness,
+                x: 0,
+                y: halfHeight - 10,
+                z: -(halfDepth + halfThickness),
+            },
+            // East (+X)
+            {
+                hx: halfThickness,
+                hy: halfHeight,
+                hz: halfDepth,
+                x: halfWidth + halfThickness,
+                y: halfHeight - 10,
+                z: 0,
+            },
+            // West (-X)
+            {
+                hx: halfThickness,
+                hy: halfHeight,
+                hz: halfDepth,
+                x: -(halfWidth + halfThickness),
+                y: halfHeight - 10,
+                z: 0,
+            },
+        ]
+
+        walls.forEach((w) => {
+            const wallDesc = RAPIER.ColliderDesc.cuboid(w.hx, w.hy, w.hz)
+                .setTranslation(w.x, w.y, w.z)
+                .setFriction(0)
+                .setRestitution(0)
+                .setCollisionGroups((0x0002 << 16) | 0xffff)
+
+            physics.world.createCollider(wallDesc, this.rigidBody!)
         })
     }
 
