@@ -45,16 +45,22 @@ export class Audio {
     public mute: { active: boolean } = { active: false }
     public volume: number = 0.5
 
+    public initialized: boolean = false
     constructor() {
-        this.initialize()
+        this.loadSettings()
     }
 
-    async initialize() {
+    loadSettings() {
         const savedVolume = localStorage.getItem("volumeLevel")
         const savedMute = localStorage.getItem("soundToggle")
 
         this.volume = savedVolume ? parseFloat(savedVolume) : 0.5
         this.mute.active = savedMute === "1"
+    }
+
+    public initAudio() {
+        if (this.initialized) return
+        this.initialized = true
 
         Howler.volume(this.volume)
         Howler.mute(this.mute.active)
@@ -93,15 +99,37 @@ export class Audio {
             ".volume-input",
         ) as HTMLInputElement
         const wrapper = document.querySelector(".slider-wrapper") as HTMLElement
-        const waveOrigin = document.getElementById("wave-origin") as HTMLElement
+        const panel = document.querySelector(".audio-panel") as HTMLElement
+        const toggleBtn = document.querySelector(
+            ".panel-toggle-btn",
+        ) as HTMLElement
+        const toggleIcon = document.getElementById("toggle-icon") as HTMLElement
 
-        if (input && wrapper && waveOrigin) {
+        this.updateDisplay()
+
+        if (toggleBtn && panel) {
+            toggleBtn.addEventListener("click", () => {
+                const isExpanded = panel.classList.toggle("expanded")
+
+                if (toggleIcon) {
+                    toggleIcon.textContent = isExpanded ? "close" : "graphic_eq"
+                }
+
+                if (isExpanded) {
+                    toggleBtn.classList.add("close-mode")
+                } else {
+                    toggleBtn.classList.remove("close-mode")
+                }
+            })
+        }
+
+        if (input && wrapper) {
             input.value = (this.volume * 100).toString()
-            this.updateWavePosition(input, waveOrigin)
+            this.updateSliderFill(input) // Initialize fill
 
             const startInteraction = () => {
+                this.initAudio()
                 wrapper.classList.add("active")
-                this.updateWavePosition(input, waveOrigin)
             }
 
             const endInteraction = () => {
@@ -117,6 +145,7 @@ export class Audio {
             input.addEventListener("touchend", endInteraction)
 
             input.addEventListener("input", (e) => {
+                this.initAudio()
                 const target = e.target as HTMLInputElement
                 const value = parseFloat(target.value) / 100
 
@@ -124,7 +153,8 @@ export class Audio {
                 Howler.volume(value)
                 localStorage.setItem("volumeLevel", value.toString())
 
-                this.updateWavePosition(target, waveOrigin)
+                this.updateDisplay()
+                this.updateSliderFill(target)
 
                 if (value > 0 && this.mute.active) {
                     this.muteDeactivate()
@@ -147,7 +177,62 @@ export class Audio {
                     this.muteActivate()
                 }
                 this.updateMuteIcon(button)
+                this.updateDisplay()
+                
+                if (input) this.updateSliderFill(input)
             })
+        }
+
+        document.addEventListener("click", (e) => {
+            if (panel && toggleBtn && panel.classList.contains("expanded")) {
+                const target = e.target as HTMLElement
+                // Check if click is outside the panel
+                if (!panel.contains(target) && !toggleBtn.contains(target)) {
+                    panel.classList.remove("expanded")
+                    toggleBtn.classList.remove("close-mode")
+                    if (toggleIcon) {
+                        toggleIcon.textContent = "graphic_eq"
+                    }
+                }
+            }
+        })
+    }
+
+    private updateSliderFill(input: HTMLInputElement) {
+        const val = parseFloat(input.value)
+        input.style.background = `linear-gradient(to right, 
+            var(--col-indigo) 0%, 
+            var(--col-purple-glow) ${val}%, 
+            rgba(51, 65, 85, 0.5) ${val}%, 
+            rgba(51, 65, 85, 0.5) 100%)`
+    }
+
+    private updateDisplay() {
+        const volText = document.querySelector(
+            ".audio-status-display .status-vol-text",
+        ) as HTMLElement
+        const volBarFill = document.querySelector(
+            ".audio-status-display .status-bar-fill",
+        ) as HTMLElement
+
+        const volPercent = Math.round(this.volume * 100)
+
+        if (volText) {
+            if (this.mute.active) {
+                volText.innerText = "MUTE"
+            } else {
+                volText.innerText = `${volPercent}%`
+            }
+        }
+
+        if (volBarFill) {
+            if (this.mute.active) {
+                volBarFill.style.width = "0%"
+                volBarFill.style.opacity = "0.5"
+            } else {
+                volBarFill.style.width = `${volPercent}%`
+                volBarFill.style.opacity = "1"
+            }
         }
     }
 
@@ -165,18 +250,6 @@ export class Audio {
         Howler.mute(false)
         this.mute.active = false
         localStorage.setItem("soundToggle", "0")
-    }
-
-    private updateWavePosition(
-        input: HTMLInputElement,
-        waveOrigin: HTMLElement,
-    ) {
-        if (waveOrigin) {
-            const val = parseFloat(input.value)
-            // Thumb width(12px)를 고려한 중앙 정렬 계산: calc(${val}% + (${6 - 12 * val / 100}px))
-            const offset = 6 - (12 * val) / 100
-            waveOrigin.style.left = `calc(${val}% + ${offset}px)`
-        }
     }
 
     private updateMuteIcon(btn: HTMLElement | null) {
