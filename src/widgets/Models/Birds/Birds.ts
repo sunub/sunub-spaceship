@@ -16,7 +16,13 @@ import {
     uniform,
     vec3,
 } from "three/tsl"
-import * as THREE from "three/webgpu"
+import {
+    DoubleSide,
+    Group,
+    InstancedMesh,
+    StorageInstancedBufferAttribute,
+    Vector3,
+} from "three/webgpu"
 import type { GameContext, IGameObject } from "@/core/GameContext"
 // 프로젝트 환경에 맞는 Material import
 import { MeshDefaultMaterial } from "@/widgets/Materials/MeshDefaultMaterial"
@@ -24,8 +30,8 @@ import { BirdGeometry } from "./BirdGeometry"
 
 export class Birds implements IGameObject {
     private context: GameContext | null = null
-    private mesh: THREE.InstancedMesh | null = null
-    private modelGroup: THREE.Group
+    private mesh: InstancedMesh | null = null
+    private modelGroup: Group
 
     // --- 설정 값 ---
     private WIDTH = 16 // 32*32 = 1024마리
@@ -39,12 +45,12 @@ export class Birds implements IGameObject {
 
     private computeVelocity: any
     private computePosition: any
-    private positionBuffer: THREE.StorageInstancedBufferAttribute | null = null
-    private velocityBuffer: THREE.StorageInstancedBufferAttribute | null = null
+    private positionBuffer: StorageInstancedBufferAttribute | null = null
+    private velocityBuffer: StorageInstancedBufferAttribute | null = null
 
     private timeUniform = uniform(0)
     private deltaUniform = uniform(0)
-    private predatorUniform = uniform(new THREE.Vector3())
+    private predatorUniform = uniform(new Vector3())
 
     private separationDist = uniform(20.0)
     private alignmentDist = uniform(20.0)
@@ -52,8 +58,8 @@ export class Birds implements IGameObject {
     private freedomFactor = uniform(0.75)
     private limitRadius = uniform(100.0)
 
-    constructor(private position: THREE.Vector3 = new THREE.Vector3(0, 0, 0)) {
-        this.modelGroup = new THREE.Group()
+    constructor(private position: Vector3 = new Vector3(0, 0, 0)) {
+        this.modelGroup = new Group()
         this.modelGroup.position.copy(this.position)
     }
 
@@ -84,11 +90,11 @@ export class Birds implements IGameObject {
             velocityArray[i3 + 2] = (Math.random() - 0.5) * 10
         }
 
-        this.positionBuffer = new THREE.StorageInstancedBufferAttribute(
+        this.positionBuffer = new StorageInstancedBufferAttribute(
             positionArray,
             3,
         )
-        this.velocityBuffer = new THREE.StorageInstancedBufferAttribute(
+        this.velocityBuffer = new StorageInstancedBufferAttribute(
             velocityArray,
             3,
         )
@@ -230,7 +236,7 @@ export class Birds implements IGameObject {
         const geometry = new BirdGeometry()
         const material = new MeshDefaultMaterial({
             colorNode: attribute("birdColor", "vec3") as any,
-            side: THREE.DoubleSide,
+            side: DoubleSide,
             hasFog: true,
         })
 
@@ -294,7 +300,7 @@ export class Birds implements IGameObject {
         material.positionNode = finalPos
 
         // InstancedMesh 생성
-        this.mesh = new THREE.InstancedMesh(geometry, material, this.COUNT)
+        this.mesh = new InstancedMesh(geometry, material, this.COUNT)
         this.mesh.castShadow = true
         this.mesh.receiveShadow = true
         this.mesh.frustumCulled = false

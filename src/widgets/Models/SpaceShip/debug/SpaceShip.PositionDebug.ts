@@ -1,11 +1,17 @@
 import type * as RAPIER from "@dimforge/rapier3d-compat"
-import * as THREE from "three/webgpu"
+import {
+    Euler,
+    MathUtils,
+    type Object3D,
+    Quaternion,
+    Vector3,
+} from "three/webgpu"
 import type { FolderApi } from "tweakpane"
 
 export interface SpaceShipPositionDebugContext {
     rigidBody: RAPIER.RigidBody | null
-    shipPivot: THREE.Object3D | null
-    mesh: THREE.Object3D | null
+    shipPivot: Object3D | null
+    mesh: Object3D | null
 }
 
 export class SpaceShipPositionDebugModule {
@@ -46,7 +52,7 @@ export class SpaceShipPositionDebugModule {
                     "meters",
                 )
 
-                const worldPos = new THREE.Vector3()
+                const worldPos = new Vector3()
                 mesh.getWorldPosition(worldPos)
             } else {
                 console.warn("⚠️ Position Debug: Required objects not available")
@@ -60,8 +66,8 @@ export class SpaceShipPositionDebugModule {
 
             if (mesh && rigidBody) {
                 const rotation = rigidBody.rotation()
-                const euler = new THREE.Euler().setFromQuaternion(
-                    new THREE.Quaternion(
+                const euler = new Euler().setFromQuaternion(
+                    new Quaternion(
                         rotation.x,
                         rotation.y,
                         rotation.z,
@@ -70,17 +76,17 @@ export class SpaceShipPositionDebugModule {
                 )
                 console.log(
                     "🔄 Roll (Przechylenie):",
-                    THREE.MathUtils.radToDeg(euler.z).toFixed(2),
+                    MathUtils.radToDeg(euler.z).toFixed(2),
                     "°",
                 )
                 console.log(
                     "🔄 Yaw (Odchylenie):",
-                    THREE.MathUtils.radToDeg(euler.y).toFixed(2),
+                    MathUtils.radToDeg(euler.y).toFixed(2),
                     "°",
                 )
                 console.log(
                     "🔄 Pitch (Pochylenie):",
-                    THREE.MathUtils.radToDeg(euler.x).toFixed(2),
+                    MathUtils.radToDeg(euler.x).toFixed(2),
                     "°",
                 )
             } else {

@@ -1,5 +1,5 @@
 import { Fn, float, uniform } from "three/tsl"
-import * as THREE from "three/webgpu"
+import { DoubleSide, Vector3, Vector4 } from "three/webgpu"
 
 import { MeshDefaultMaterial } from "../MeshDefaultMaterial"
 import grassFragment from "./Shader/grassFragment"
@@ -29,10 +29,10 @@ export class GrassMaterial extends MeshDefaultMaterial {
         } = options
 
         const grassParams = uniform(
-            new THREE.Vector4(segments, patchSize, width, height),
+            new Vector4(segments, patchSize, width, height),
         )
         const time = uniform(0)
-        const uPlayerPosition = uniform(new THREE.Vector3(0, -100, 0))
+        const uPlayerPosition = uniform(new Vector3(0, -100, 0))
         const uInteractionRadius = uniform(interactionRadius)
 
         const { positionNode, vNormal, vColor, vGrassData } = grassVertex(
@@ -47,7 +47,7 @@ export class GrassMaterial extends MeshDefaultMaterial {
         super({
             colorNode,
             normalNode: vNormal,
-            side: THREE.DoubleSide,
+            side: DoubleSide,
             hasLightBounce: false,
             hasCoreShadows: false,
             hasDropShadows: false,
@@ -173,7 +173,7 @@ export class GrassMaterial extends MeshDefaultMaterial {
     get playerPosition() {
         return this._uPlayerPosition.value
     }
-    set playerPosition(v: THREE.Vector3) {
+    set playerPosition(v: Vector3) {
         this._uPlayerPosition.value.copy(v)
     }
 

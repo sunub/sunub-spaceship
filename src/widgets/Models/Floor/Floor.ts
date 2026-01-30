@@ -209,8 +209,9 @@ export class Floor extends BaseModel {
                 .setFriction(0)
                 .setRestitution(0)
                 .setCollisionGroups((0x0002 << 16) | 0xffff)
-
-            physics.world.createCollider(wallDesc, this.rigidBody!)
+            if(this.rigidBody) {
+                physics.world.createCollider(wallDesc, this.rigidBody)
+            }
         })
     }
 

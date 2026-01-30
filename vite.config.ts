@@ -23,7 +23,7 @@ export default defineConfig({
 	},
 	build: {
 		minify: "esbuild",
-		chunkSizeWarningLimit: 1000,
+		chunkSizeWarningLimit: 2500,
 		assetsDir: "assets",
 		modulePreload: {
 			polyfill: true,

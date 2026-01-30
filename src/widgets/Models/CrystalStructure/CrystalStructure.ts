@@ -1,18 +1,27 @@
 // 📦 Rapier 물리 엔진 임포트
 import { ColliderDesc, RigidBodyDesc } from "@dimforge/rapier3d-compat"
 import { color } from "three/tsl"
-import * as THREE from "three/webgpu"
+import {
+    Box3,
+    type BufferGeometry,
+    InstancedMesh,
+    type Matrix4,
+    type Mesh,
+    type MeshStandardMaterial,
+    Object3D,
+    Vector3,
+} from "three/webgpu"
 import type { Physics } from "@/widgets/Physics"
 import { MeshDefaultMaterial } from "../../Materials/MeshDefaultMaterial"
 import { BaseModel } from "../BaseModel"
 
 export class CrystalStructure extends BaseModel {
-    constructor(position: THREE.Vector3 = new THREE.Vector3(0, 0, 0)) {
+    constructor(position: Vector3 = new Vector3(0, 0, 0)) {
         super("crystalStructure", position)
     }
 
-    protected setupModelStructure(clonedModel: THREE.Object3D): void {
-        this.modelGroup = new THREE.Object3D()
+    protected setupModelStructure(clonedModel: Object3D): void {
+        this.modelGroup = new Object3D()
         this.modelGroup.name = "CrystalStructureGroup"
 
         clonedModel.updateMatrixWorld(true)
@@ -22,17 +31,17 @@ export class CrystalStructure extends BaseModel {
         const instancesMap = new Map<
             string,
             {
-                geometry: THREE.BufferGeometry
-                originalMaterial: THREE.MeshStandardMaterial
-                matrices: THREE.Matrix4[]
+                geometry: BufferGeometry
+                originalMaterial: MeshStandardMaterial
+                matrices: Matrix4[]
             }
         >()
 
         clonedModel.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh
+            if ((child as Mesh).isMesh) {
+                const mesh = child as Mesh
                 const geometry = mesh.geometry
-                const material = mesh.material as THREE.MeshStandardMaterial
+                const material = mesh.material as MeshStandardMaterial
 
                 if (!instancesMap.has(geometry.uuid)) {
                     instancesMap.set(geometry.uuid, {
@@ -65,7 +74,7 @@ export class CrystalStructure extends BaseModel {
 
             const defaultMaterial = new MeshDefaultMaterial(materialParams)
 
-            const instancedMesh = new THREE.InstancedMesh(
+            const instancedMesh = new InstancedMesh(
                 geometry,
                 defaultMaterial,
                 matrices.length,
@@ -99,12 +108,12 @@ export class CrystalStructure extends BaseModel {
 
         // 1. 모델의 정확한 시각적 중심과 크기 계산
         // (이 박스는 (0,0,0) 원점을 기준으로 모델이 어디에 치우쳐져 있는지 알려줍니다)
-        const box = new THREE.Box3().setFromObject(this.modelGroup)
+        const box = new Box3().setFromObject(this.modelGroup)
 
-        const size = new THREE.Vector3()
+        const size = new Vector3()
         box.getSize(size) // 모델의 전체 크기 {w, h, d}
 
-        const center = new THREE.Vector3()
+        const center = new Vector3()
         box.getCenter(center) // 모델의 중심 좌표 (Offset)
 
         // 2. RigidBody 생성 (고정 위치)

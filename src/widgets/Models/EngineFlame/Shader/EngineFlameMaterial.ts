@@ -1,14 +1,21 @@
 import { uniform, varying, vec2, vec3 } from "three/tsl"
-import * as THREE from "three/webgpu"
+import {
+    AdditiveBlending,
+    Color,
+    FrontSide,
+    NodeMaterial,
+    Vector2,
+    Vector3,
+} from "three/webgpu"
 import engineFlameVertex from "./engineFlameVertex"
 import engineflameFragment from "./engineflameFragment"
 
-export class EngineFlameMaterial extends THREE.NodeMaterial {
+export class EngineFlameMaterial extends NodeMaterial {
     public uTime: UniformNode<number>
-    public uResolution: UniformNode<THREE.Vector2>
-    public uLocalCameraPos: UniformNode<THREE.Vector3>
-    public uMainColor: UniformNode<THREE.Color>
-    public uBaseColor: UniformNode<THREE.Color>
+    public uResolution: UniformNode<Vector2>
+    public uLocalCameraPos: UniformNode<Vector3>
+    public uMainColor: UniformNode<Color>
+    public uBaseColor: UniformNode<Color>
     public uThrust: UniformNode<number>
     public uFlameLength: UniformNode<number>
 
@@ -21,11 +28,11 @@ export class EngineFlameMaterial extends THREE.NodeMaterial {
 
         this.uTime = uniform(0.0)
         this.uResolution = uniform(
-            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            new Vector2(window.innerWidth, window.innerHeight),
         )
-        this.uLocalCameraPos = uniform(new THREE.Vector3())
-        this.uMainColor = uniform(new THREE.Color(1.0, 0.27, 0.15))
-        this.uBaseColor = uniform(new THREE.Color(0.25, 0.62, 0.79))
+        this.uLocalCameraPos = uniform(new Vector3())
+        this.uMainColor = uniform(new Color(1.0, 0.27, 0.15))
+        this.uBaseColor = uniform(new Color(0.25, 0.62, 0.79))
         this.uThrust = uniform(0.0)
         this.uFlameLength = uniform(0.1)
 
@@ -43,9 +50,9 @@ export class EngineFlameMaterial extends THREE.NodeMaterial {
             uFlameLength: this.uFlameLength,
         })
 
-        this.side = THREE.FrontSide
+        this.side = FrontSide
         this.transparent = true
         this.depthWrite = false
-        this.blending = THREE.AdditiveBlending
+        this.blending = AdditiveBlending
     }
 }

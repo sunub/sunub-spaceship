@@ -1,22 +1,22 @@
-// @ts-nocheck
-import * as THREE from "three/webgpu"
+import type { Side } from "three/webgpu"
+import { Color, FrontSide, ShaderMaterial, Vector3 } from "three/webgpu"
 import { fragmentShader, vertexShader } from "../Shader/CloudShader"
 
 interface CloudMaterialOptions {
-    side?: THREE.Side
-    uLightPosition?: THREE.Vector3
-    uDarkColor?: THREE.Color
-    uLightColor?: THREE.Color
+    side?: Side
+    uLightPosition?: Vector3
+    uDarkColor?: Color
+    uLightColor?: Color
     uLightIntensity?: number
     uLightRadius?: number
 }
 
-export class CloudMaterial extends THREE.ShaderMaterial {
+export class CloudMaterial extends ShaderMaterial {
     constructor({
-        side = THREE.FrontSide,
-        uLightPosition = new THREE.Vector3(0, 0, 0),
-        uDarkColor = new THREE.Color("#07002d"),
-        uLightColor = new THREE.Color("#bca29f"),
+        side = FrontSide,
+        uLightPosition = new Vector3(0, 0, 0),
+        uDarkColor = new Color("#07002d"),
+        uLightColor = new Color("#bca29f"),
         uLightIntensity = 1.5,
         uLightRadius = 5.0,
     }: CloudMaterialOptions = {}) {

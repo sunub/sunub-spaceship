@@ -1,14 +1,22 @@
-import * as THREE from "three/webgpu"
+import {
+    type BufferGeometry,
+    InstancedMesh,
+    type Matrix4,
+    type Mesh,
+    type MeshStandardMaterial,
+    Object3D,
+    Vector3,
+} from "three/webgpu"
 import { CrystalMaterial } from "@/widgets/Materials/CrystalMaterial"
 import { BaseModel } from "../BaseModel"
 
 export class BrightCrystal extends BaseModel {
-    constructor(position: THREE.Vector3 = new THREE.Vector3(0, 0, 0)) {
+    constructor(position: Vector3 = new Vector3(0, 0, 0)) {
         super("brightCrystalModel", position)
     }
 
-    protected setupModelStructure(clonedModel: THREE.Object3D): void {
-        this.modelGroup = new THREE.Object3D()
+    protected setupModelStructure(clonedModel: Object3D): void {
+        this.modelGroup = new Object3D()
         this.modelGroup.name = "BrightCrystalGroup"
 
         clonedModel.updateMatrixWorld(true)
@@ -21,17 +29,17 @@ export class BrightCrystal extends BaseModel {
         const instancesMap = new Map<
             string,
             {
-                geometry: THREE.BufferGeometry
-                originalMaterial: THREE.MeshStandardMaterial
-                matrices: THREE.Matrix4[]
+                geometry: BufferGeometry
+                originalMaterial: MeshStandardMaterial
+                matrices: Matrix4[]
             }
         >()
 
         clonedModel.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh
+            if ((child as Mesh).isMesh) {
+                const mesh = child as Mesh
                 const geometry = mesh.geometry
-                const material = mesh.material as THREE.MeshStandardMaterial
+                const material = mesh.material as MeshStandardMaterial
 
                 if (!instancesMap.has(geometry.uuid)) {
                     instancesMap.set(geometry.uuid, {
@@ -64,7 +72,7 @@ export class BrightCrystal extends BaseModel {
             })
             crystalMat.emissiveMap
 
-            const instancedMesh = new THREE.InstancedMesh(
+            const instancedMesh = new InstancedMesh(
                 geometry,
                 crystalMat,
                 matrices.length,

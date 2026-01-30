@@ -1,4 +1,4 @@
-import * as THREE from "three/webgpu"
+import { Vector3 } from "three/webgpu"
 import { TweakPane } from "@/widgets/TweakPane"
 
 export interface ProjectData {
@@ -7,14 +7,14 @@ export interface ProjectData {
     description: string
     url: string
     tags: string[]
-    position: THREE.Vector3
+    position: Vector3
     image?: string
 }
 
 export class ProjectRegistry {
     private static instance: ProjectRegistry
     private projects: ProjectData[] = []
-    private projectPosition: THREE.Vector3 = new THREE.Vector3(25.2, 0, 20.2)
+    private projectPosition: Vector3 = new Vector3(25.2, 0, 20.2)
 
     private constructor() {
         this.initializeDefaultProjects()
@@ -56,7 +56,7 @@ export class ProjectRegistry {
                     "sunub가 작업 중인 프로젝트들을 확인 할 수 있습니다.",
                 url: "https://github.com/sunub",
                 tags: [],
-                position: new THREE.Vector3(-12, 0, 28),
+                position: new Vector3(-12, 0, 28),
             },
         )
 

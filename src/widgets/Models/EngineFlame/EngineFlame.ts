@@ -1,4 +1,4 @@
-import * as THREE from "three/webgpu"
+import { BoxGeometry, Group, Mesh, Vector3 } from "three/webgpu"
 import type { GameContext, IGameObject } from "@/core/GameContext"
 // import { vertexShader, fragmentShader } from '../Shader/EngineFlameShader';
 import { TweakPane } from "@/widgets/TweakPane"
@@ -6,14 +6,14 @@ import { EngineFlameMaterial } from "./Shader/EngineFlameMaterial"
 
 export class EngineFlame implements IGameObject {
     private context: GameContext | null = null
-    public modelGroup: THREE.Group
-    // private mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial> | null = null;
-    // private material: THREE.ShaderMaterial | null = null;
-    private mesh: THREE.Mesh | null = null
+    public modelGroup: Group
+    // private mesh: Mesh<PlaneGeometry, ShaderMaterial> | null = null;
+    // private material: ShaderMaterial | null = null;
+    private mesh: Mesh | null = null
     private material: EngineFlameMaterial | null = null
 
-    constructor(position: THREE.Vector3 = new THREE.Vector3(0, 2, 0)) {
-        this.modelGroup = new THREE.Group()
+    constructor(position: Vector3 = new Vector3(0, 2, 0)) {
+        this.modelGroup = new Group()
         this.modelGroup.position.copy(position)
     }
 
@@ -22,9 +22,9 @@ export class EngineFlame implements IGameObject {
         // Temporary fix for WebGPU compatibility
         this.material = new EngineFlameMaterial()
 
-        const geometry = new THREE.BoxGeometry(1.0, 10.0, 1.0)
+        const geometry = new BoxGeometry(1.0, 10.0, 1.0)
 
-        this.mesh = new THREE.Mesh(geometry, this.material)
+        this.mesh = new Mesh(geometry, this.material)
         this.mesh.scale.set(0.3, 0.5, 0.4)
         // this.mesh.rotation.x = Math.PI / 2; // 회전 제거 혹은 필요시 로컬 회전만 적용
 

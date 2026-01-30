@@ -178,7 +178,7 @@ export class Audio {
                 }
                 this.updateMuteIcon(button)
                 this.updateDisplay()
-                
+
                 if (input) this.updateSliderFill(input)
             })
         }

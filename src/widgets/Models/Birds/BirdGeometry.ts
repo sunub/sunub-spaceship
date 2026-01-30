@@ -1,6 +1,6 @@
-import * as THREE from "three/webgpu"
+import { BufferAttribute, BufferGeometry, Color } from "three/webgpu"
 
-export class BirdGeometry extends THREE.BufferGeometry {
+export class BirdGeometry extends BufferGeometry {
     constructor() {
         super()
 
@@ -66,7 +66,7 @@ export class BirdGeometry extends THREE.BufferGeometry {
             birdVertex[v] = vType
 
             // Color
-            const finalColor = new THREE.Color()
+            const finalColor = new Color()
             if (vType === 1 || vType === 2)
                 finalColor.setHex(0x00ccff) // Wing
             else if (vertData[1] < -0.1)
@@ -84,12 +84,9 @@ export class BirdGeometry extends THREE.BufferGeometry {
             v++
         }
 
-        this.setAttribute("position", new THREE.BufferAttribute(vertices, 3))
-        this.setAttribute("birdColor", new THREE.BufferAttribute(birdColors, 3))
-        this.setAttribute(
-            "birdVertex",
-            new THREE.BufferAttribute(birdVertex, 1),
-        )
+        this.setAttribute("position", new BufferAttribute(vertices, 3))
+        this.setAttribute("birdColor", new BufferAttribute(birdColors, 3))
+        this.setAttribute("birdVertex", new BufferAttribute(birdVertex, 1))
 
         this.scale(0.2, 0.2, 0.2)
         this.computeVertexNormals()

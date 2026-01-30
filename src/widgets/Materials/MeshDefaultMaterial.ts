@@ -13,18 +13,26 @@ import {
     vec3,
     vec4,
 } from "three/tsl"
-import * as THREE from "three/webgpu"
+import type { Node, Side, TextureNode } from "three/webgpu"
+import {
+    BackSide,
+    type Color,
+    type ConstNode,
+    DoubleSide,
+    FrontSide,
+    MeshLambertNodeMaterial,
+} from "three/webgpu"
 import { Game } from "../Game.js"
 
 interface MeshDefaultMaterialParameters {
     colorNode?:
-        | ShaderNodeObject<THREE.TextureNode>
-        | ShaderNodeObject<THREE.ConstNode<THREE.Color>>
+        | ShaderNodeObject<TextureNode>
+        | ShaderNodeObject<ConstNode<Color>>
         | ShaderNodeObject<OperatorNode>
-    normalNode?: ShaderNodeObject<THREE.Node>
-    alphaNode?: ShaderNodeObject<THREE.Node>
-    shadowNode?: ShaderNodeObject<THREE.Node>
-    emissionNode?: ShaderNodeObject<THREE.Node>
+    normalNode?: ShaderNodeObject<Node>
+    alphaNode?: ShaderNodeObject<Node>
+    shadowNode?: ShaderNodeObject<Node>
+    emissionNode?: ShaderNodeObject<Node>
     hasCoreShadows?: boolean
     hasDropShadows?: boolean
     hasLightBounce?: boolean
@@ -34,21 +42,21 @@ interface MeshDefaultMaterialParameters {
 
     depthWrite?: boolean
     depthTest?: boolean
-    side?: THREE.Side
+    side?: Side
     wireframe?: boolean
     transparent?: boolean
-    shadowSide?: THREE.Side
+    shadowSide?: Side
     alphaTest?: number // [Fix] 인터페이스 속성 추가
 }
 
-export class MeshDefaultMaterial extends THREE.MeshLambertNodeMaterial {
+export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
     // [Fix] Game 타입을 any로 처리하여 누락된 속성(reveal 등) 접근 허용
     static revealDiscardNodeBuilder = (
         game: any,
-        outputColor: ShaderNodeObject<THREE.Node>,
+        outputColor: ShaderNodeObject<Node>,
     ) => {
         // [Fix] Fn의 인자 타입을 명시하여 Iterator 에러 해결
-        return Fn(([col]: [ShaderNodeObject<THREE.Node>]) => {
+        return Fn(([col]: [ShaderNodeObject<Node>]) => {
             const distanceToCenter = positionWorld.xz
                 .sub(game.reveal.position2Uniform)
                 .length()
@@ -66,11 +74,11 @@ export class MeshDefaultMaterial extends THREE.MeshLambertNodeMaterial {
     private game: Game = Game.getInstance()
 
     // [Fix] 클래스 내부 private 속성 명시적 선언
-    private _colorNode: ShaderNodeObject<THREE.Node>
-    private _normalNode: ShaderNodeObject<THREE.Node>
-    private _alphaNode: ShaderNodeObject<THREE.Node>
-    private _shadowNode: ShaderNodeObject<THREE.Node>
-    private _emissionNode: ShaderNodeObject<THREE.Node>
+    private _colorNode: ShaderNodeObject<Node>
+    private _normalNode: ShaderNodeObject<Node>
+    private _alphaNode: ShaderNodeObject<Node>
+    private _shadowNode: ShaderNodeObject<Node>
+    private _emissionNode: ShaderNodeObject<Node>
 
     public hasCoreShadows: boolean
     public hasDropShadows: boolean
@@ -84,10 +92,10 @@ export class MeshDefaultMaterial extends THREE.MeshLambertNodeMaterial {
 
         this.depthWrite = parameters.depthWrite ?? true
         this.depthTest = parameters.depthTest ?? true
-        this.side = parameters.side ?? THREE.FrontSide
+        this.side = parameters.side ?? FrontSide
         this.wireframe = parameters.wireframe ?? false
         this.transparent = parameters.transparent ?? false
-        this.shadowSide = parameters.shadowSide ?? THREE.FrontSide
+        this.shadowSide = parameters.shadowSide ?? FrontSide
 
         this.hasCoreShadows = parameters.hasCoreShadows ?? true
         this.hasDropShadows = parameters.hasDropShadows ?? true
@@ -98,8 +106,7 @@ export class MeshDefaultMaterial extends THREE.MeshLambertNodeMaterial {
 
         // [Fix] 파라미터 할당 시 타입 단언 또는 호환 타입 사용
         this._colorNode =
-            (parameters.colorNode as ShaderNodeObject<THREE.Node>) ??
-            color(0xffffff)
+            (parameters.colorNode as ShaderNodeObject<Node>) ?? color(0xffffff)
         this._normalNode = parameters.normalNode ?? normalWorld
         this._alphaNode = parameters.alphaNode ?? float(1)
         this._shadowNode = parameters.shadowNode ?? float(0)
@@ -118,7 +125,7 @@ export class MeshDefaultMaterial extends THREE.MeshLambertNodeMaterial {
             // [Fix] 타입 정의 상 receivedShadowNode가 인자를 받지 않는 것으로 되어 있으나,
             // 실제 TSL 런타임에서는 shadow 인자를 전달받으므로 any로 캐스팅하여 에러 우회
             this.receivedShadowNode = Fn(
-                ([shadow]: [ShaderNodeObject<THREE.Node>]) => {
+                ([shadow]: [ShaderNodeObject<Node>]) => {
                     catchedShadow.mulAssign(shadow.r)
                     return float(1)
                 },
@@ -134,10 +141,7 @@ export class MeshDefaultMaterial extends THREE.MeshLambertNodeMaterial {
 
             // Normal orientation
             const reorientedNormal = this._normalNode.toVar()
-            if (
-                this.side === THREE.DoubleSide ||
-                this.side === THREE.BackSide
-            ) {
+            if (this.side === DoubleSide || this.side === BackSide) {
                 If(frontFacing.not(), () => {
                     reorientedNormal.mulAssign(-1)
                 })
@@ -183,7 +187,7 @@ export class MeshDefaultMaterial extends THREE.MeshLambertNodeMaterial {
 
             // Core shadow
             // [Fix] 초기화 타입과 할당 타입 불일치 해결을 위해 명시적 타입 선언
-            let coreShadowMix: ShaderNodeObject<THREE.Node> = float(0)
+            let coreShadowMix: ShaderNodeObject<Node> = float(0)
             if (this.hasCoreShadows && game.lighting)
                 coreShadowMix = reorientedNormal
                     .dot(game.lighting.directionUniform)
@@ -193,7 +197,7 @@ export class MeshDefaultMaterial extends THREE.MeshLambertNodeMaterial {
                     )
 
             // Cast shadow
-            let dropShadowMix: ShaderNodeObject<THREE.Node> = float(0)
+            let dropShadowMix: ShaderNodeObject<Node> = float(0)
             if (this.hasDropShadows) dropShadowMix = catchedShadow.oneMinus()
 
             // Combined shadows

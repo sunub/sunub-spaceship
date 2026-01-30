@@ -2,7 +2,11 @@ import { EXRLoader } from "three/examples/jsm/Addons.js"
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js"
-import * as THREE from "three/webgpu"
+import {
+    CubeTextureLoader,
+    TextureLoader,
+    type WebGPURenderer,
+} from "three/webgpu"
 import { ServiceRegistry } from "@/core/ServiceRegistry"
 import { HDRLoader } from "./HDRLoader.js"
 
@@ -45,7 +49,7 @@ export default class Resources {
 
         const getRenderer = () => {
             try {
-                return this.registry.get<THREE.WebGPURenderer>("renderer")
+                return this.registry.get<WebGPURenderer>("renderer")
             } catch (_) {
                 console.warn(
                     "Resources: Renderer not found in registry, KTX2Loader might fail if not initialized.",
@@ -99,7 +103,7 @@ export default class Resources {
         return loadedResources
     }
 
-    private getSharedKTX2Loader(renderer?: THREE.WebGPURenderer) {
+    private getSharedKTX2Loader(renderer?: WebGPURenderer) {
         if (!Resources.ktx2Loader) {
             Resources.ktx2Loader = new KTX2Loader()
             Resources.ktx2Loader.setTranscoderPath("/basis/")
@@ -110,7 +114,7 @@ export default class Resources {
         return Resources.ktx2Loader
     }
 
-    private getLoader(type: LoaderType, renderer?: THREE.WebGPURenderer) {
+    private getLoader(type: LoaderType, renderer?: WebGPURenderer) {
         if (this.loaders.has(type)) return this.loaders.get(type)
 
         let loader: any
@@ -130,11 +134,11 @@ export default class Resources {
             }
 
             case "jpg":
-                loader = new THREE.TextureLoader()
+                loader = new TextureLoader()
                 break
 
             case "png":
-                loader = new THREE.TextureLoader()
+                loader = new TextureLoader()
                 break
 
             case "draco":
@@ -143,7 +147,7 @@ export default class Resources {
                 break
 
             case "texture":
-                loader = new THREE.TextureLoader()
+                loader = new TextureLoader()
                 break
 
             case "exr":
@@ -155,7 +159,7 @@ export default class Resources {
                 break
 
             case "cubeTexture":
-                loader = new THREE.CubeTextureLoader()
+                loader = new CubeTextureLoader()
                 break
 
             case "hdr":

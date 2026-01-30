@@ -18,7 +18,7 @@ import {
     uniform,
     vec3,
 } from "three/tsl"
-import * as THREE from "three/webgpu"
+import { DoubleSide } from "three/webgpu"
 import { MeshDefaultMaterial } from "../MeshDefaultMaterial"
 import { fbm } from "./noiseNode"
 
@@ -105,7 +105,7 @@ export class CrystalMaterial extends MeshDefaultMaterial {
 
             // 크리스탈 설정
             transparent: false, // Lambert 기반이므로 투명보다는 불투명+발광이 더 예쁨
-            side: THREE.DoubleSide, // 뒷면도 그려야 내부가 꽉 찬 느낌
+            side: DoubleSide, // 뒷면도 그려야 내부가 꽉 찬 느낌
         })
 
         this._uTime = uTime

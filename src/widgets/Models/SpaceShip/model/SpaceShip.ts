@@ -14,13 +14,13 @@ import {
     Vector3,
 } from "three/webgpu"
 import { FlightController } from "@/widgets/controllers/FlightController"
+import { JoyStick } from "@/widgets/controllers/JoyStick"
 import { TweakPane } from "@/widgets/TweakPane"
 import { BaseModel } from "../../BaseModel"
 import { EngineFlame } from "../../EngineFlame"
 import { SpaceShipCameraDebugModule } from "../debug/SpaceShip.CameraDebug"
 import { SpaceShipPositionDebugModule } from "../debug/SpaceShip.PositionDebug"
 import { SpaceShipVisualDebugModule } from "../debug/SpaceShip.VisualDebug"
-import { JoyStick } from "@/widgets/controllers/JoyStick"
 
 export class SpaceShip extends BaseModel {
     // ─────────────────────────────────────────────────────────────────────────────
