@@ -1,0 +1,574 @@
+:root {
+	/* Colors - Exact matches from Tailwind */
+	--bg-dark: #020617;
+	--color-white: #ffffff;
+	--color-slate-200: #e2e8f0;
+	--color-slate-300: #cbd5e1;
+	--color-slate-400: #94a3b8;
+	--color-slate-500: #64748b;
+
+	/* Specific Gradients */
+	--bg-deep-space: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #020617 60%);
+
+	/* Fonts */
+	--font-serif: "Playfair Display", serif;
+	--font-sans: "Inter", sans-serif;
+	--font-display: "Cinzel", serif;
+
+	--container-col: 3fr 5fr;
+}
+
+/* this.element.style.position = "fixed"
+        this.element.style.top = "0"
+        this.element.style.left = "0"
+        this.element.style.width = "100cqw"
+        this.element.style.height = "100cqh"
+        this.element.style.zIndex = "1000"
+        this.element.style.display = "none" // 초기에는 숨김
+
+        // 배경 흐림 효과 (CSS의 .terminal-header 등과 겹치지 않게 오버레이 전용 배경)
+        this.element.style.backgroundColor = "rgba(1, 1, 31, 0.8)" // --col-bg-body 기반 투명도
+        this.element.style.backdropFilter = "blur(8px)" */
+
+.main-content {
+	position: fixed;
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+
+	flex-direction: column;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 1000;
+
+	background-color: rgba(1, 1, 31, 0.8);
+	backdrop-filter: blur(8px);
+
+	visibility: hidden;
+	opacity: 0;
+	user-select: none;
+	pointer-events: none;
+	/* Scrolling enabled when content overflows */
+	overflow-y: auto;
+	padding: 1rem 0;
+}
+
+.fixed-layer {
+	position: fixed;
+	pointer-events: none;
+}
+
+.bg-stardust {
+	inset: 0;
+	background-image: url("https://www.transparenttextures.com/patterns/stardust.png");
+	opacity: 0.2;
+	z-index: -40;
+}
+
+/* Top Glow */
+.glow-top {
+	top: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 800px;
+	height: 500px;
+	background-color: rgba(88, 28, 135, 0.2);
+	filter: blur(100px);
+	border-radius: 9999px;
+	z-index: -30;
+}
+
+/* Bottom Glow */
+.glow-bottom {
+	bottom: 0;
+	right: 0;
+	width: 500px;
+	height: 500px;
+	background-color: rgba(30, 58, 138, 0.1);
+	filter: blur(120px);
+	border-radius: 9999px;
+	z-index: -30;
+}
+
+/* 3. Layout */
+.container {
+	position: relative;
+	/* Grid for larger screens, Flex for mobile */
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	max-width: 1200px;
+	margin: 0 auto;
+	gap: 2rem;
+	padding: 0 1rem;
+}
+
+@media (min-width: 768px) {
+	.container {
+		display: grid;
+		grid-template-columns: var(--container-col);
+		align-items: center;
+		height: 100%;
+		padding: 0 2rem;
+	}
+}
+
+@media screen and (max-width: 425px) {
+	:root {
+		--container-col: 1fr;
+	}
+
+	.container {
+		padding: 4rem 1rem 2rem;
+		height: auto;
+		min-height: 100%;
+		justify-content: flex-start;
+	}
+
+	.header {
+		padding-top: 0;
+	}
+
+	.header-top {
+		position: absolute;
+		top: 0;
+		left: 0;
+		padding: 1rem;
+		z-index: 20;
+	}
+
+	.visual-area {
+		margin-top: 1rem;
+	}
+}
+
+/* 4. Header */
+.header {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding-top: 1rem;
+}
+
+.header-top {
+	display: flex;
+	justify-content: space-between;
+	padding: 1rem;
+	width: 100%;
+	max-width: 1200px; /* Aligns with container max-width */
+}
+
+.header-bottom {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	align-items: center;
+}
+
+.header-id {
+	font-size: 10px;
+	letter-spacing: 0.2em;
+	font-weight: 500;
+	text-transform: uppercase;
+	color: var(--color-slate-400);
+}
+
+.status-badge {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.status-dot {
+	width: 0.375rem;
+	height: 0.375rem;
+	border-radius: 9999px;
+	background-color: #34d399;
+	/* emerald-400 */
+	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.status-text {
+	font-size: 10px;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: rgba(52, 211, 153, 0.8);
+}
+
+/* 5. Main Visual (Logo) */
+.visual-area {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1rem;
+	width: 100%;
+}
+
+.logo-container {
+	position: relative;
+	width: 100%;
+	max-width: 12dvw;
+	aspect-ratio: 1 / 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.logo-bg-glow {
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(to top right,
+			rgba(168, 85, 247, 0.2),
+			rgba(6, 182, 212, 0.2));
+	border-radius: 9999px;
+	filter: blur(64px);
+	animation: pulse-glow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.logo-content {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: float-slow 6s ease-in-out infinite;
+}
+
+.ring-1 {
+	position: absolute;
+	width: 10dvw;
+	max-width: 280px;
+	height: 10dvw;
+	max-height: 280px;
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-radius: 9999px;
+	transform: rotate(45deg);
+}
+
+.ring-2 {
+	position: absolute;
+	width: 10dvw;
+	max-width: 280px;
+	height: 10dvw;
+	max-height: 280px;
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-radius: 9999px;
+	transform: rotate(-12deg);
+	opacity: 0.5;
+}
+
+.core-wrapper {
+	position: relative;
+	width: 12dvw;
+	max-width: 12rem;
+	height: 12dvw;
+	max-height: 12rem;
+}
+
+.core-gradient-1 {
+	position: absolute;
+	inset: 0;
+	border-radius: 9999px;
+	background: linear-gradient(to bottom right,
+			rgba(99, 102, 241, 0.3),
+			rgba(168, 85, 247, 0.1),
+			transparent);
+	filter: blur(12px);
+}
+
+.core-gradient-2 {
+	position: absolute;
+	inset: 1rem;
+	border-radius: 9999px;
+	background: linear-gradient(to top left,
+			rgba(34, 211, 238, 0.2),
+			transparent,
+			rgba(147, 51, 234, 0.2));
+	filter: blur(4px);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.diamond {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%) rotate(45deg);
+	width: 8dvw;
+	max-width: 8rem;
+	height: 8dvw;
+	max-height: 8rem;
+	background-color: rgba(255, 255, 255, 0.05);
+	backdrop-filter: blur(4px);
+	border-radius: 1rem;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	box-shadow: 0 0 30px rgba(139, 92, 246, 0.1);
+}
+
+/* 6. Typography */
+.title-wrapper {
+	text-align: center;
+	position: relative;
+	z-index: 10;
+}
+
+.title-wrapper h1 {
+	font-family: var(--font-serif);
+	font-size: clamp(2rem, 5vw, 3rem);
+	line-height: 1;
+	letter-spacing: -0.025em;
+	background-image: linear-gradient(to bottom, #ffffff, #ffffff, #e9d5ff);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	text-shadow: 0 0 20px rgba(216, 180, 254, 0.3);
+}
+
+.title-divider {
+	height: 4px;
+	background: linear-gradient(to right,
+			transparent,
+			rgba(6, 182, 212, 0.5),
+			transparent);
+	border-radius: 9999px;
+}
+
+/* 7. Mission Card */
+.glass-card {
+	width: 100%;
+	background: rgba(13, 18, 38, 0.6);
+	backdrop-filter: blur(16px);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+	border-radius: 1rem;
+	padding: 1.5rem;
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.card-accent {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 4px;
+	height: 100%;
+	background: linear-gradient(to bottom, #a855f7, #06b6d4);
+	opacity: 0.6;
+}
+
+.card-label {
+	font-size: clamp(0.75rem, 1dvw, 1rem);
+	font-weight: 700;
+	letter-spacing: 0.15em;
+	color: #22d3ee;
+	text-transform: uppercase;
+	font-family: var(--font-sans);
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.card-desc {
+	font-size: 0.875rem;
+	line-height: 1.625;
+	color: var(--color-slate-300);
+	font-weight: 300;
+	padding-left: 1rem;
+	padding-top: 0.25rem;
+	padding-bottom: 0.25rem;
+}
+
+/* 8. Specifications */
+.specs-wrapper {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.specs-label {
+	font-size: 0.75rem;
+	font-weight: 700;
+	letter-spacing: 0.15em;
+	color: var(--color-slate-500);
+	text-transform: uppercase;
+	font-family: var(--font-sans);
+}
+
+.tags-container {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.tag {
+	padding: 0.375rem 0.75rem;
+	border-radius: 9999px;
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: 0.025em;
+	text-transform: uppercase;
+	border: 1px solid;
+	cursor: default;
+	transition: background-color 0.15s;
+}
+
+.tag-cyan {
+	border-color: rgba(6, 182, 212, 0.3);
+	background-color: rgba(8, 51, 68, 0.2);
+	color: #a5f3fc;
+}
+
+.tag-cyan:hover {
+	background-color: rgba(22, 78, 99, 0.3);
+}
+
+.tag-purple {
+	border-color: rgba(168, 85, 247, 0.3);
+	background-color: rgba(59, 7, 100, 0.2);
+	color: #e9d5ff;
+}
+
+.tag-purple:hover {
+	background-color: rgba(88, 28, 135, 0.3);
+}
+
+.tag-default {
+	border-color: rgba(255, 255, 255, 0.1);
+	background-color: rgba(255, 255, 255, 0.05);
+	color: var(--color-slate-300);
+}
+
+.tag-default:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+}
+
+.flex-grow {
+	flex-grow: 1;
+}
+
+/* 9. Buttons - FIXED HOVER EFFECTS */
+.button-grid {
+	width: 100%;
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 1rem;
+	padding-bottom: 1rem;
+}
+
+.btn {
+	width: 100%;
+	padding: 1rem;
+	border-radius: 0.75rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	cursor: pointer;
+}
+
+/* Back Button Interaction Fix */
+.btn-back {
+	background-color: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	color: var(--color-slate-300);
+	transition: background-color 0.3s ease;
+	/* Button background only */
+}
+
+/* Icon transition specifically */
+.btn-back .material-symbols-outlined {
+	transition: transform 0.3s ease;
+}
+
+/* Hover effect: Only move icon, button stays put */
+.btn-back:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-back:hover .material-symbols-outlined {
+	transform: translateX(-4px);
+	/* Moves icon left 4px */
+}
+
+/* Launch Button Interaction */
+.btn-launch {
+	background: linear-gradient(to right, #06b6d4, #3b82f6);
+	color: white;
+	font-weight: 700;
+	border: none;
+	box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+	transition: all 0.3s ease;
+}
+
+.btn-launch:hover {
+	transform: scale(1.02);
+	/* Scales the whole button */
+	box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+}
+
+/* 10. Animations */
+@keyframes pulse {
+
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0.5;
+	}
+}
+
+@keyframes float-slow {
+
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+
+	50% {
+		transform: translateY(-10px);
+	}
+}
+
+@keyframes pulse-glow {
+
+	0%,
+	100% {
+		opacity: 0.6;
+		filter: blur(20px);
+	}
+
+	50% {
+		opacity: 1;
+		filter: blur(25px);
+	}
+}
+
+@media (min-width: 768px) {
+	h1 {
+		font-size: 3.75rem;
+	}
+
+	.card-desc {
+		font-size: 1rem;
+	}
+
+	.tag {
+		font-size: 0.75rem;
+	}
+
+	.button-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
