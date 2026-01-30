@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events"
 import { Vector3 } from "three/webgpu"
 import type Resources from "@/utils/Resources"
 import type { Audio } from "@/widgets/Audio"
-import { Game } from "@/widgets/Game"
+import type { Game } from "@/widgets/Game"
 import { entrySources, modelSources, textureSources } from "../../sources"
 import type { GameContext } from "../GameContext"
 import { Atmosphere } from "./model/Atmosphere"
@@ -21,7 +21,7 @@ export class Entry extends EventEmitter {
     constructor(private context: GameContext) {
         super()
         this.resources = this.context.resources
-        this.game = Game.getInstance()
+        this.game = this.context.game
         this.audio = this.context.audio
     }
 
@@ -154,6 +154,7 @@ export class Entry extends EventEmitter {
         const button = document.querySelector("#entry-button")
         if (button) {
             button.addEventListener("click", () => {
+                this.audio.initAudio()
                 this.audio.play("button")
 
                 this.game.startGame()
@@ -163,8 +164,8 @@ export class Entry extends EventEmitter {
     }
 
     get sceneObjects() {
-        const objects_pos = new Vector3(0, 39, 0)
-        const objects_scale = new Vector3(0.65, 0.65, 0.65)
+        const objects_pos = new Vector3(0, 39.0, 0)
+        const objects_scale = new Vector3(0.5, 0.5, 0.5)
 
         this.loadingAnimation = new LoadingAnimation(objects_pos)
 
