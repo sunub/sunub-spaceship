@@ -1,4 +1,4 @@
-import { Game } from "./widgets/Game"
+import { Game } from "@/widgets/Game"
 
 const main = async () => {
     const game = Game.getInstance()
