@@ -10,21 +10,7 @@ export class TerminalOverlay {
     constructor(private context: GameContext) {
         this.element = document.createElement("main")
         this.element.id = "project-terminal"
-        // CSS의 .main-content 스타일을 활용하기 위해 클래스 추가
         this.element.className = "main-content"
-
-        // 오버레이를 위한 필수 스타일 (CSS 파일에 없는 경우를 대비해 고정값 설정)
-        this.element.style.position = "fixed"
-        this.element.style.top = "0"
-        this.element.style.left = "0"
-        this.element.style.width = "100%"
-        this.element.style.height = "100%"
-        this.element.style.zIndex = "1000"
-        this.element.style.display = "none" // 초기에는 숨김
-
-        // 배경 흐림 효과 (CSS의 .terminal-header 등과 겹치지 않게 오버레이 전용 배경)
-        this.element.style.backgroundColor = "rgba(1, 1, 31, 0.8)" // --col-bg-body 기반 투명도
-        this.element.style.backdropFilter = "blur(8px)"
 
         document.body.appendChild(this.element)
     }
@@ -34,73 +20,89 @@ export class TerminalOverlay {
 
         this.isVisible = true
         this.isHiding = false
-        this.element.style.display = "flex"
+        this.element.style.visibility = "visible"
+        this.element.style.opacity = "1"
+        this.element.style.pointerEvents = "auto"
 
         this.element.innerHTML = `
-            <div class="content-wrapper animate-float">
-
-                <div class="glow-backdrop"></div>
-
-                <div class="glass-card">
-
-                    <div class="card-sidebar">
-                        <div class="id-tag">ID: #${project.id.toUpperCase()}</div>
-
-                        <div class="image-frame-wrapper">
-                            <div class="image-frame">
-                                <div class="frame-content" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBhzhcCKNV6KmxzL8uVfLmlPx1vkIa7oP2RXIskZiZPw5c7r6Ai72d8fos88qT174G0CTVJyt7BjHQ5rJmxalkf8G9Sc57g60hgrrJ2ZmQtfHJUdllCjfonfwuGql0SqRhRcZr1SznY9XtUaLJns8vw8nJFO-vapPQez8snd7OzSEA79Xy9ipUxlWdYghSaMC1xX-L3spRMVljnLnYhjlSxc1kMBRZgkle9l5wnPMbSAZwGh556rIT21-fehLRNOMnXlYPT678xR2c');">
-                                    <div class="frame-overlay"></div>
-                                </div>
-                            </div>
-                            <div class="corner-deco top-left"></div>
-                            <div class="corner-deco bottom-right"></div>
-                        </div>
-
-                        <div class="status-indicator">
-                            <span class="status-dot-wrapper">
-                                <span class="ping-animation"></span>
-                                <span class="dot"></span>
-                            </span>
-                            VISUALIZATION ACTIVE
-                        </div>
-                    </div>
-
-                    <div class="card-body">
-                        <div class="title-group">
-                            <h1 class="main-title">${project.title}</h1>
-                            <div class="title-underline"></div>
-                        </div>
-
-                        <div class="info-group">
-                            <div class="mission-section">
-                                <h3 class="section-label">Mission Brief</h3>
-                                <p class="description">
-                                    ${project.description}
-                                </p>
-                            </div>
-
-                            <div class="specs-section">
-                                <h3 class="section-label small">System Specifications</h3>
-                                <div class="tags-container">
-                                    ${project.tags.map((tag) => `<span class="tag tag-primary">${tag}</span>`).join("")}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="action-buttons">
-                            <button class="btn btn-outline back-btn">
-                                <span class="material-symbols-outlined">arrow_back</span>
-                                Back to Flight
-                            </button>
-                            <button class="btn btn-primary launch-btn">
-                                <span class="material-symbols-outlined">rocket_launch</span>
-                                Launch Project
-                            </button>
-                        </div>
-                    </div>
-                </div>
+        <div class="header-top">
+            <span class="header-id">ID: #${project.id}</span>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span class="status-text">System Active</span>
             </div>
-            <div class="outer-deco top-right"></div>
-            <div class="outer-deco bottom-left"></div>
+        </div>
+        <div class="container">
+				<header class="header">
+                    <div class="header-bottom">
+                        <div class="logo-container">
+					    	<div class="logo-bg-glow"></div>
+					    	<div class="logo-content">
+					    		<div class="ring-1"></div>
+					    		<div class="ring-2"></div>
+					    		<div class="core-wrapper">
+					    			<div class="core-gradient-1"></div>
+					    			<div class="core-gradient-2"></div>
+					    			<div class="diamond"></div>
+					    		</div>
+					    	</div>
+					    </div>
+
+					    <div class="title-wrapper">
+						    <h1>${project.title}</h1>
+						    <div class="title-divider"></div>
+					    </div>
+                    </div>
+				</header>
+
+				<div class="visual-area">
+					<div class="glass-card">
+						<div class="card-accent"></div>
+						<h3 class="card-label">
+							<span
+								class="material-symbols-outlined"
+								style="font-size: 1.25rem;"
+							>
+								rocket_launch
+							</span>
+							Mission Brief
+						</h3>
+						<p class="card-desc">
+							${project.description}
+						</p>
+					</div>
+
+					<div class="specs-wrapper">
+						<h3 class="specs-label">System Specifications</h3>
+						<div class="tags-container">
+                            ${project.tags.map((tag) => `<span class="tag tag-default">${tag}</span>`).join("")}
+						</div>
+					</div>
+
+				    <div class="grow"></div>
+
+					<div class="button-grid">
+						<button type="button" class="btn btn-back">
+							<span
+								class="material-symbols-outlined"
+								style="font-size: 1.5rem;"
+							>
+								arrow_back
+							</span>
+							Back to Flight
+						</button>
+						<button type="button" class="btn btn-launch">
+							<span
+								class="material-symbols-outlined"
+								style="font-size: 1.5rem; animation: pulse 2s infinite;"
+							>
+								rocket
+							</span>
+							Launch Project
+						</button>
+					</div>
+				</div>
+			</div>
         `
 
         const content = this.element.querySelector(".glass-card") as HTMLElement
@@ -118,13 +120,13 @@ export class TerminalOverlay {
         )
 
         this.element
-            .querySelector(".launch-btn")
+            .querySelector(".btn-launch")
             ?.addEventListener("click", () => {
                 window.open(project.url, "_blank")
             })
 
         this.element
-            .querySelector(".back-btn")
+            .querySelector(".btn-back")
             ?.addEventListener("click", () => {
                 this.hide()
             })
@@ -147,15 +149,18 @@ export class TerminalOverlay {
                 ease: "power2.in",
                 overwrite: true,
                 onComplete: () => {
-                    this.element.style.display = "none"
+                    this.element.style.visibility = "hidden"
+                    this.element.style.opacity = "0"
+                    this.element.style.pointerEvents = "none"
                     this.isVisible = false
                     this.isHiding = false
-                    // 내용 비우기 (메모리 관리 및 다음 오픈 시 깜빡임 방지)
                     this.element.innerHTML = ""
                 },
             })
         } else {
-            this.element.style.display = "none"
+            this.element.style.visibility = "hidden"
+            this.element.style.opacity = "0"
+            this.element.style.pointerEvents = "none"
             this.isVisible = false
             this.isHiding = false
             this.element.innerHTML = ""
