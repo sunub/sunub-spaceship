@@ -11,7 +11,7 @@ import {
     uv,
     vec2,
 } from "three/tsl"
-import type { Camera, Object3D } from "three/webgpu"
+import type { Camera, Object3D, Scene } from "three/webgpu"
 import {
     ArrowHelper,
     Box3,
@@ -32,6 +32,9 @@ export class JoyStick {
     public centerZ: number
     public size: Vector3
     public isLocked = false
+    public debugMode = false
+
+    private scene: Scene | null = null
 
     private plane!: Mesh
 
@@ -72,6 +75,9 @@ export class JoyStick {
         this.centerY = 0
         this.centerZ = 0
         this.size = new Vector3()
+
+        const urlParams = new URLSearchParams(window.location.search)
+        this.debugMode = urlParams.get("debug") === "joystick"
     }
 
     drawJoyStick(context: GameContext, targetObject: Object3D) {
@@ -172,14 +178,17 @@ export class JoyStick {
         this.plane.visible = false
 
         context.scene.add(this.plane)
+        this.scene = context.scene
 
-        context.scene.add(this.targetArrow)
-        context.scene.add(this.shipForwardArrow)
-        context.scene.add(this.outputArrow)
+        this.setDebugMode(this.debugMode)
 
         context.rendering.renderer.domElement.addEventListener(
             "pointerdown",
             (e) => {
+                if (e.button !== 0) {
+                    return
+                }
+
                 this.isDragging = true
                 this.plane.visible = true
                 this.uIsActive.value = 1.0
@@ -268,11 +277,33 @@ export class JoyStick {
             .divideScalar(this.maxRadius)
         this.outputVector.copy(normalizedJoyStickValue)
 
-        const urlParams = new URLSearchParams(window.location.search)
-        const debugMode = urlParams.get("debug") === "joystick"
-        if (!debugMode || !this.plane.parent) {
-            return
+        if (this.debugMode) {
+            this.updateDebug(targetPosition, relativeVector, output)
         }
+    }
+
+    public setDebugMode(isEnabled: boolean) {
+        this.debugMode = isEnabled
+
+        if (!this.scene) return
+
+        if (this.debugMode) {
+            this.scene.add(this.targetArrow)
+            this.scene.add(this.shipForwardArrow)
+            this.scene.add(this.outputArrow)
+        } else {
+            this.scene.remove(this.targetArrow)
+            this.scene.remove(this.shipForwardArrow)
+            this.scene.remove(this.outputArrow)
+        }
+    }
+
+    private updateDebug(
+        targetPosition: Vector3,
+        relativeVector: Vector3,
+        output: Vector2,
+    ) {
+        if (!this.plane.parent) return
 
         this.targetArrow.position.copy(targetPosition)
         this.targetArrow.setDirection(relativeVector.clone().normalize())
