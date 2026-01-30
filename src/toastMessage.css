@@ -1,9 +1,5 @@
 :root {
     --color-primary: #d8b4fe;
-    --font-serif: "Playfair Display", serif;
-    --font-sans: "Noto Sans KR", sans-serif;
-
-    /* Gradients */
     --gradient-iridescent: linear-gradient(
         45deg,
         rgba(236, 72, 153, 0.15),
@@ -54,7 +50,7 @@
 
 .notification-overlay {
     position: fixed;
-    top: 100px;
+    top: 50px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
@@ -79,7 +75,7 @@
 .toast-wrapper {
     position: relative;
     width: 100%;
-    max-width: 36rem;
+    max-width: 60dvw;
     margin: 0 1rem;
     transition:
         opacity 0.5s ease,
@@ -118,7 +114,8 @@
     animation: nebula-pulse 4s ease-in-out infinite;
     transition: transform 0.5s;
     overflow: hidden;
-    min-width: 400px;
+
+    width: 100%;
 }
 
 .organic-shape {
@@ -180,6 +177,7 @@
     color: #fce7f3;
     opacity: 0.9;
     filter: drop-shadow(0 0 8px rgba(236, 72, 153, 0.6));
+    user-select: none;
 }
 
 .toast-content {
@@ -189,6 +187,7 @@
     flex-direction: column;
     justify-content: center;
     z-index: 10;
+    user-select: none;
 }
 
 .toast-header {
@@ -202,7 +201,7 @@
     font-size: 11px;
     letter-spacing: 0.2em;
     color: rgba(251, 207, 232, 0.9);
-    font-family: var(--font-serif);
+    font-family: "Cinzel", serif;
     font-style: italic;
     font-weight: 600;
 }
@@ -220,6 +219,7 @@
 .toast-message {
     font-size: 15px;
     color: white;
+    font-family: "Pretendard", sans-serif;
     font-weight: 500;
     line-height: 1.625;
     letter-spacing: 0.025em;
