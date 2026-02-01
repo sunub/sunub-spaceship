@@ -36,6 +36,8 @@ import { TerminalOverlay } from "./UI/TerminalOverlay"
 
 export class Game {
     public isReady: boolean = false
+    public isPausedByVisibility: boolean = false
+    private shouldResetTime: boolean = false
 
     private static instance: Game
     private domElement!: HTMLDivElement
@@ -79,7 +81,7 @@ export class Game {
         return Game.instance
     }
 
-    private constructor() {}
+    private constructor() { }
 
     get sceneObjects() {
         return [
@@ -169,8 +171,10 @@ export class Game {
 
     public async startGame() {
         this.isReady = true
+        this.time.reset(performance.now())
         this.audio.play("background")
         this.drawControlIndicators()
+        this.setupVisibilityEvents()
         if (this.camera && this.spaceShip && this.spaceShip.shipPivot) {
             const targetPos = this.spaceShip.shipPivot.getWorldPosition(
                 new Vector3(),
@@ -275,6 +279,10 @@ export class Game {
     }
 
     private gameLoop(time: number) {
+        if (this.shouldResetTime) {
+            this.time.reset(time)
+            this.shouldResetTime = false
+        }
         this.time.update(time)
         this.update()
     }
@@ -292,6 +300,25 @@ export class Game {
                 this.handleInteraction()
             }
         })
+    }
+
+    public setupVisibilityEvents() {
+        document.addEventListener("visibilitychange", this.handleVisibilityChange.bind(this));
+    }
+
+    private handleVisibilityChange() {
+        console.log("Visibility changed:", document.visibilityState);
+        if (document.visibilityState === "hidden") {
+            this.audio.systemMute(true)
+            this.isPausedByVisibility = true
+
+        } else {
+            if (this.isPausedByVisibility) {
+                this.shouldResetTime = true
+                this.audio.systemMute(false)
+                this.isPausedByVisibility = false
+            }
+        }
     }
 
     private handleInteraction() {
@@ -319,12 +346,21 @@ export class Game {
         }
 
         this.isRendering = true
-        const deltaTime = this.time.delta
+           // Delta limiting to prevent death spiral on low FPS (Max 20FPS)
+        // Convert ms to seconds
+        const deltaTime = Math.min(this.time.delta * 0.001, 0.05)
 
         try {
-            this.physics.step()
-
             this.lighting.update()
+
+            // Physics Update (Variable Timestep)
+            // Sync physics step with render frame time 1:1
+            this.gameObjects.forEach((obj) => {
+                obj.updatePhysics?.(deltaTime)
+            })
+            // Pass delta time in seconds (already converted above)
+            this.physics.step(deltaTime)
+
             this.gameObjects.forEach((obj) => {
                 obj.update(deltaTime)
             })
@@ -345,6 +381,7 @@ export class Game {
             this.isRendering = false
         }
     }
+    
 
     private resize() {
         this.rendering.resize()

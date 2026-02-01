@@ -116,12 +116,12 @@ export class Audio {
             <button class="panel-toggle-btn" id="audio-panel-toggle">
               <span class="material-symbols-outlined" id="toggle-icon">graphic_eq</span>
             </button>
-    
+
             <div class="panel-content folded">
               <button class="mute-btn">
                 <span class="material-symbols-outlined">volume_up</span>
               </button>
-  
+
               <div class="slider-wrapper">
                 <div class="wave-origin" id="wave-origin" style="display: none;"></div>
                 <input type="range" class="volume-input" min="0" max="100" value="70">
@@ -236,10 +236,10 @@ export class Audio {
 
     private updateSliderFill(input: HTMLInputElement) {
         const val = parseFloat(input.value)
-        input.style.background = `linear-gradient(to right, 
-            var(--col-indigo) 0%, 
-            var(--col-purple-glow) ${val}%, 
-            rgba(51, 65, 85, 0.5) ${val}%, 
+        input.style.background = `linear-gradient(to right,
+            var(--col-indigo) 0%,
+            var(--col-purple-glow) ${val}%,
+            rgba(51, 65, 85, 0.5) ${val}%,
             rgba(51, 65, 85, 0.5) 100%)`
     }
 
@@ -296,6 +296,16 @@ export class Audio {
         ) as HTMLElement
         if (icon) {
             icon.innerText = this.mute.active ? "volume_off" : "volume_up"
+        }
+    }
+
+    public systemMute(mute: boolean) {
+        if (mute) {
+            Howler.mute(true);
+        } else {
+            if (!this.mute.active) {
+                Howler.mute(false);
+            }
         }
     }
 
