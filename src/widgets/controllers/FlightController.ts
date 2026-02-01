@@ -151,7 +151,7 @@ export class FlightController {
     private updateSmoothedInputs(deltaTime: number): void {
         // Frame-rate independent smoothing
         // Derived from: factor = 1 - Math.pow(1 - baseFactor, deltaTime * 60)
-        const timeAdjustedFactor = 1 - Math.pow(1 - this.inputSmoothness, deltaTime * 60)
+        const timeAdjustedFactor = 1 - (1 - this.inputSmoothness) ** (deltaTime * 60)
 
         this.smoothedThrustInput +=
             (this.thrustInput - this.smoothedThrustInput) * timeAdjustedFactor
