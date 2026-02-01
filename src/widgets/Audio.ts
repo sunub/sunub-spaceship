@@ -94,6 +94,43 @@ export class Audio {
         this.songs[name]?.sound.stop()
     }
 
+    public createDisplay() {
+        const display = document.createElement("div")
+        display.classList.add("audio-status-display")
+        display.innerHTML = `
+            <div class="status-labels">
+                <span class="label-text">SOUND</span>
+                <span class="status-vol-text">70%</span>
+            </div>
+            <div class="status-bar-bg">
+                <div class="status-bar-fill" style="width: 70%;"></div>
+            </div>
+        `
+        document.body.insertAdjacentElement("beforeend", display)
+    }
+
+    public createPanel() {
+        const panel = document.createElement("div")
+        panel.classList.add("audio-panel")
+        panel.innerHTML = `
+            <button class="panel-toggle-btn" id="audio-panel-toggle">
+              <span class="material-symbols-outlined" id="toggle-icon">graphic_eq</span>
+            </button>
+    
+            <div class="panel-content folded">
+              <button class="mute-btn">
+                <span class="material-symbols-outlined">volume_up</span>
+              </button>
+  
+              <div class="slider-wrapper">
+                <div class="wave-origin" id="wave-origin" style="display: none;"></div>
+                <input type="range" class="volume-input" min="0" max="100" value="70">
+              </div>
+            </div>
+        `
+        document.body.insertAdjacentElement("beforeend", panel)
+    }
+
     public handleSoundControl() {
         const input = document.querySelector(
             ".volume-input",
@@ -186,7 +223,6 @@ export class Audio {
         document.addEventListener("click", (e) => {
             if (panel && toggleBtn && panel.classList.contains("expanded")) {
                 const target = e.target as HTMLElement
-                // Check if click is outside the panel
                 if (!panel.contains(target) && !toggleBtn.contains(target)) {
                     panel.classList.remove("expanded")
                     toggleBtn.classList.remove("close-mode")

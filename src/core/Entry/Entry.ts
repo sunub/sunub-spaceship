@@ -156,6 +156,9 @@ export class Entry extends EventEmitter {
             button.addEventListener("click", () => {
                 this.audio.initAudio()
                 this.audio.play("button")
+                this.audio.createDisplay()
+                this.audio.createPanel()
+                this.audio.handleSoundControl()
 
                 this.game.startGame()
                 this.dispose()

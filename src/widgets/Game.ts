@@ -87,7 +87,7 @@ export class Game {
             new Mountain(),
             new MountainOutliner(),
             new Grass({
-                count: 50000,
+                count: 25000,
                 width: 0.25,
                 height: 1.0,
             }),
@@ -114,7 +114,6 @@ export class Game {
         this.inputManager = InputManager.getInstance()
         this.resources = new Resources()
         this.audio = new Audio()
-        this.audio.handleSoundControl()
         this.registerAllServices()
 
         this.rendering = new Rendering()
