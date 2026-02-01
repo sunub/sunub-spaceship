@@ -23,7 +23,7 @@ export default class Time extends EventEmitter {
         const rawDelta = currentTime - this.current
         // Smooth delta to prevent jitter
         this.delta += (rawDelta - this.delta) * 0.1
-        
+
         this.current = currentTime
         this.elapsed = currentTime
 
@@ -54,7 +54,7 @@ export default class Time extends EventEmitter {
         const rawDelta = currentTime - this.current
         // Smooth delta
         this.delta += (rawDelta - this.delta) * 0.1
-        
+
         this.current = currentTime
         this.elapsed = this.current - this.start
 

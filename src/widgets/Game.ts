@@ -81,7 +81,7 @@ export class Game {
         return Game.instance
     }
 
-    private constructor() { }
+    private constructor() {}
 
     get sceneObjects() {
         return [
@@ -303,15 +303,17 @@ export class Game {
     }
 
     public setupVisibilityEvents() {
-        document.addEventListener("visibilitychange", this.handleVisibilityChange.bind(this));
+        document.addEventListener(
+            "visibilitychange",
+            this.handleVisibilityChange.bind(this),
+        )
     }
 
     private handleVisibilityChange() {
-        console.log("Visibility changed:", document.visibilityState);
+        console.log("Visibility changed:", document.visibilityState)
         if (document.visibilityState === "hidden") {
             this.audio.systemMute(true)
             this.isPausedByVisibility = true
-
         } else {
             if (this.isPausedByVisibility) {
                 this.shouldResetTime = true
@@ -346,7 +348,7 @@ export class Game {
         }
 
         this.isRendering = true
-           // Delta limiting to prevent death spiral on low FPS (Max 20FPS)
+        // Delta limiting to prevent death spiral on low FPS (Max 20FPS)
         // Convert ms to seconds
         const deltaTime = Math.min(this.time.delta * 0.001, 0.05)
 
@@ -381,7 +383,6 @@ export class Game {
             this.isRendering = false
         }
     }
-    
 
     private resize() {
         this.rendering.resize()

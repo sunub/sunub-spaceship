@@ -301,10 +301,10 @@ export class Audio {
 
     public systemMute(mute: boolean) {
         if (mute) {
-            Howler.mute(true);
+            Howler.mute(true)
         } else {
             if (!this.mute.active) {
-                Howler.mute(false);
+                Howler.mute(false)
             }
         }
     }

@@ -379,7 +379,7 @@ export class SpaceShip extends BaseModel {
         // Variable Physics Timestep을 사용하므로 화면 갱신과 물리 갱신이 1:1로 동기화됨
         const position = this.rigidBody.translation()
         const rotation = this.rigidBody.rotation()
-        
+
         this.shipPivot.position.set(position.x, position.y, position.z)
         this.shipPivot.quaternion.set(
             rotation.x,

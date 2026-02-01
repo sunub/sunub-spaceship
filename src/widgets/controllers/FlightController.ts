@@ -88,7 +88,10 @@ export class FlightController {
     /**
      * The main physics update loop. Apply forces and torques here.
      */
-    public handleMovement(rigidBody: RAPIER.RigidBody, deltaTime: number): void {
+    public handleMovement(
+        rigidBody: RAPIER.RigidBody,
+        deltaTime: number,
+    ): void {
         // 1. 입력값 보간 (Smoothing) 계산
         this.updateSmoothedInputs(deltaTime)
 
@@ -151,7 +154,8 @@ export class FlightController {
     private updateSmoothedInputs(deltaTime: number): void {
         // Frame-rate independent smoothing
         // Derived from: factor = 1 - Math.pow(1 - baseFactor, deltaTime * 60)
-        const timeAdjustedFactor = 1 - (1 - this.inputSmoothness) ** (deltaTime * 60)
+        const timeAdjustedFactor =
+            1 - (1 - this.inputSmoothness) ** (deltaTime * 60)
 
         this.smoothedThrustInput +=
             (this.thrustInput - this.smoothedThrustInput) * timeAdjustedFactor
