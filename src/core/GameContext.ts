@@ -35,6 +35,7 @@ export interface GameContext {
 export interface IGameObject {
     initialize?(context: GameContext): void | Promise<void>
     update(deltaTime: number): void
+    updatePhysics?(deltaTime: number): void
     dispose?(): void
 }
 

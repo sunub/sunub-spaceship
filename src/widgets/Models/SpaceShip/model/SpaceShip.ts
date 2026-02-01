@@ -10,6 +10,7 @@ import {
     Mesh,
     MeshBasicMaterial,
     Object3D,
+    Quaternion,
     Vector2,
     Vector3,
 } from "three/webgpu"
@@ -82,9 +83,6 @@ export class SpaceShip extends BaseModel {
     private readonly COLOR_SAFE = 0x0000ff
     private readonly COLOR_HIT = 0xff0000
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // 🚀 INITIALIZATION
-    // ─────────────────────────────────────────────────────────────────────────────
     constructor() {
         super("spaceshipModel", new Vector3(0, 1.15, 0))
 
@@ -365,16 +363,24 @@ export class SpaceShip extends BaseModel {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // 🔄 UPDATE LOOP
-    // ─────────────────────────────────────────────────────────────────────────────
+    public updatePhysics(deltaTime: number) {
+        if (!this.rigidBody || !this.context || !this.shipPivot) return
+
+        this.updateShapecast()
+
+        if (!this.isLocked) {
+            this.flightController.handleMovement(this.rigidBody, deltaTime)
+        }
+    }
 
     public update(deltaTime: number) {
         if (!this.rigidBody || !this.shipPivot || !this.context) return
 
-        // 1. 물리 위치 동기화
+        // 1. 물리 위치 동기화 (보간 없이 직접 동기화)
+        // Variable Physics Timestep을 사용하므로 화면 갱신과 물리 갱신이 1:1로 동기화됨
         const position = this.rigidBody.translation()
         const rotation = this.rigidBody.rotation()
+        
         this.shipPivot.position.set(position.x, position.y, position.z)
         this.shipPivot.quaternion.set(
             rotation.x,
@@ -385,19 +391,15 @@ export class SpaceShip extends BaseModel {
 
         // 2. 컴포넌트 업데이트
         this.updateCameraTracking()
-        this.updateFlightController(deltaTime)
+        this.processInputAndVisuals(deltaTime)
         this.updateFlameLength(deltaTime)
-
-        // 3. 센서 업데이트 ([수정] 매개변수 제거)
-        this.updateShapecast()
     }
 
-    /**
-     * 전방 장애물 감지 로직 (ShapeCast)
-     * [수정] Unused Parameter 'deltaTime' 제거
-     */
+    // 전방 장애물 감지 로직 (ShapeCast)
     public updateShapecast() {
-        if (!this.rigidBody || !this.context || !this.shipPivot) return
+        if (!this.rigidBody || !this.context || !this.shipPivot) {
+            return
+        }
 
         const world = this.context.physics.world
         const shape = new Cuboid(
@@ -460,7 +462,7 @@ export class SpaceShip extends BaseModel {
         }
     }
 
-    private updateFlightController(deltaTime: number) {
+    private processInputAndVisuals(deltaTime: number) {
         if (
             !this.rigidBody ||
             !this.shipPivot ||
@@ -501,7 +503,8 @@ export class SpaceShip extends BaseModel {
             this.flightController.updateMovementInput(0, 0)
         }
 
-        this.flightController.handleMovement(this.rigidBody)
+        // Physics movement handled in fixedUpdate
+
         this.updateBankingEffect(rollInput)
         this.updateControlIndicators(rollInput, thrustInput)
 

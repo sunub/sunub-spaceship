@@ -85,9 +85,12 @@ export class FlightController {
     /**
      * The main physics update loop. Apply forces and torques here.
      */
-    public handleMovement(rigidBody: RAPIER.RigidBody): void {
+    /**
+     * The main physics update loop. Apply forces and torques here.
+     */
+    public handleMovement(rigidBody: RAPIER.RigidBody, deltaTime: number): void {
         // 1. 입력값 보간 (Smoothing) 계산
-        this.updateSmoothedInputs()
+        this.updateSmoothedInputs(deltaTime)
 
         // 2. 현재 물리 상태 가져오기 (위치, 속도, 각속도)
         const currentRotation = new Quaternion().copy(
@@ -145,11 +148,15 @@ export class FlightController {
     /**
      * Interpolates raw input to smoothed input using LERP.
      */
-    private updateSmoothedInputs(): void {
+    private updateSmoothedInputs(deltaTime: number): void {
+        // Frame-rate independent smoothing
+        // Derived from: factor = 1 - Math.pow(1 - baseFactor, deltaTime * 60)
+        const timeAdjustedFactor = 1 - Math.pow(1 - this.inputSmoothness, deltaTime * 60)
+
         this.smoothedThrustInput +=
-            (this.thrustInput - this.smoothedThrustInput) * this.inputSmoothness
+            (this.thrustInput - this.smoothedThrustInput) * timeAdjustedFactor
         this.smoothedRollInput +=
-            (this.rollInput - this.smoothedRollInput) * this.inputSmoothness
+            (this.rollInput - this.smoothedRollInput) * timeAdjustedFactor
 
         // Drift prevention for tiny values
         if (Math.abs(this.smoothedThrustInput) < 0.001)

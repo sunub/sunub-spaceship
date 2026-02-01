@@ -11,7 +11,7 @@ export default class Time extends EventEmitter {
     constructor() {
         super()
 
-        this.start = Date.now()
+        this.start = performance.now()
         this.current = 0
         this.elapsed = 0
         this.delta = 16
@@ -20,7 +20,10 @@ export default class Time extends EventEmitter {
     }
 
     update(currentTime: number) {
-        this.delta = currentTime - this.current
+        const rawDelta = currentTime - this.current
+        // Smooth delta to prevent jitter
+        this.delta += (rawDelta - this.delta) * 0.1
+        
         this.current = currentTime
         this.elapsed = currentTime
 
@@ -47,8 +50,11 @@ export default class Time extends EventEmitter {
     tick() {
         if (!this.isRunning) return
 
-        const currentTime = Date.now()
-        this.delta = currentTime - this.current
+        const currentTime = performance.now()
+        const rawDelta = currentTime - this.current
+        // Smooth delta
+        this.delta += (rawDelta - this.delta) * 0.1
+        
         this.current = currentTime
         this.elapsed = this.current - this.start
 
@@ -57,5 +63,11 @@ export default class Time extends EventEmitter {
         this.animationId = window.requestAnimationFrame(() => {
             this.tick()
         })
+    }
+
+    reset(currentTime: number) {
+        this.current = currentTime - 16.67
+        this.elapsed = currentTime
+        this.delta = 16.67
     }
 }

@@ -22,8 +22,11 @@ export class Physics extends EventEmitter {
         // context.scene.add(this.debug.lineSegments)
     }
 
-    step(): void {
+    step(timestep?: number): void {
         if (this.isInitialized) {
+            if (timestep) {
+                this.world.timestep = timestep
+            }
             this.world.step()
         }
     }
