@@ -11,10 +11,6 @@ interface EventInfo {
     once?: boolean
 }
 
-/**
- * 개선된 Pub/Sub 패턴 구현 클래스.
- * 네임스페이스를 지원하여 이벤트 관리를 용이하게 합니다.
- */
 export default class EventEmitter {
     private callbacks: Record<string, Record<string, EventInfo[]>>
 
@@ -149,8 +145,6 @@ export default class EventEmitter {
         )
     }
 
-    // Private Methods
-
     private addListener(
         names: string,
         callback: Callback,
@@ -186,13 +180,11 @@ export default class EventEmitter {
         name: ResolvedName,
         targetCallback?: Callback,
     ): void {
-        // 케이스 1: '.ui' -> 'ui' 네임스페이스 전체 삭제
         if (name.namespace !== "base" && name.value === "") {
             delete this.callbacks[name.namespace]
             return
         }
 
-        // 케이스 2: 특정 이벤트 삭제
         const namespacesToCheck =
             name.namespace === "base"
                 ? Object.keys(this.callbacks)
@@ -203,7 +195,6 @@ export default class EventEmitter {
             if (!events) return
 
             if (targetCallback) {
-                // 특정 콜백만 제거
                 const index = events.findIndex(
                     (info) => info.callback === targetCallback,
                 )
@@ -211,11 +202,9 @@ export default class EventEmitter {
                     events.splice(index, 1)
                 }
             } else {
-                // 모든 콜백 제거
                 delete this.callbacks[namespace][name.value]
             }
 
-            // 빈 네임스페이스 정리 (base 제외)
             if (
                 namespace !== "base" &&
                 Object.keys(this.callbacks[namespace]).length === 0
@@ -229,7 +218,6 @@ export default class EventEmitter {
         const callbacks: EventInfo[] = []
 
         if (resolvedName.namespace === "base") {
-            // 모든 네임스페이스에서 이벤트 찾기
             Object.values(this.callbacks).forEach((events) => {
                 const eventCallbacks = events[resolvedName.value]
                 if (eventCallbacks) {
@@ -237,7 +225,6 @@ export default class EventEmitter {
                 }
             })
         } else {
-            // 특정 네임스페이스의 이벤트만
             const eventCallbacks =
                 this.callbacks[resolvedName.namespace]?.[resolvedName.value]
             if (eventCallbacks) {
@@ -248,9 +235,6 @@ export default class EventEmitter {
         return callbacks
     }
 
-    /**
-     * 이벤트 이름 문자열을 한 번에 파싱하여 ResolvedName 배열로 반환
-     */
     private parseEventNames(names: string): ResolvedName[] {
         return names
             .replace(/[^a-zA-Z0-9 ,/.]/g, "")
@@ -260,9 +244,6 @@ export default class EventEmitter {
             .map((name) => this.resolveName(name))
     }
 
-    /**
-     * 이벤트 이름을 값과 네임스페이스로 분리합니다.
-     */
     private resolveName(name: string): ResolvedName {
         const parts = name.split(".")
         return {
