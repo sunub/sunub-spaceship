@@ -148,6 +148,7 @@ export class Camera {
 
         this._context.time.on("tick", () => {
             if (this.isTransitioning) {
+                this.updateCameraTransformFromAngle()
                 return
             }
 
@@ -178,9 +179,8 @@ export class Camera {
 
     private updateCameraTransformFromAngle() {
         // 카메라 위치 = 바라보는 점(Target) + 떨어진 거리 벡터(Value/Offset)
-        const desiredPosition = this.angle.target.clone().add(this.angle.value)
-
-        this.instance.position.copy(desiredPosition)
+        // 메모리 할당 최적화: clone() 제거하고 instance.position에 직접 연산
+        this.instance.position.copy(this.angle.target).add(this.angle.value)
         this.instance.lookAt(this.angle.target)
     }
 
@@ -416,10 +416,6 @@ export class Camera {
                 z: targetOffset.z,
                 duration: duration,
                 ease: "power2.inOut",
-                onUpdate: () => {
-                    // ✅ 애니메이션 도중 올바른 계산식으로 위치 갱신
-                    this.updateCameraTransformFromAngle()
-                },
                 onComplete: () => {
                     this.mode = newMode
                     this.isTransitioning = false
