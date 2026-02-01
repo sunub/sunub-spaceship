@@ -4,14 +4,18 @@ import type { Source } from "./utils/Resources"
 
 export const modelSources = [
     ["floorModel", "gltfModel", "/models/floor/floor-compressed.glb"],
-    ["spaceshipModel", "gltfModel", "/models/player/spaceship-compressed.glb"],
+    [
+        "spaceshipModel",
+        "gltfModel",
+        "/models/player/spaceship-optimized-compressed.glb",
+    ],
     ["mountainModel", "gltfModel", "/models/floor/mountain-compressed.glb"],
     [
         "mountainOutlinerModel",
         "gltfModel",
         "/models/ground/mountain_outliner-compressed.glb",
     ],
-    ["grassModel", "gltfModel", "/models/floor/grass-compressed.glb"],
+    ["grassModel", "gltfModel", "/models/floor/grass_optimized-compressed.glb"],
     ["crystalModel", "gltfModel", "/models/ground/crystal-compressed.glb"],
     [
         "treeLightsModel",
@@ -109,8 +113,8 @@ export const textureSources = [
             source.wrapT = ClampToEdgeWrapping
         },
     ],
-    ["terrainGrassTexture", "ktx2", "/texture/terrainGrass/terrainGrass.ktx2"],
-    ["treeLights", "gltfModel", "/models/ground/tree_lights-compressed.glb"],
+    // ["terrainGrassTexture", "ktx2", "/texture/terrainGrass/terrainGrass.ktx2"],
+    // ["treeLights", "gltfModel", "/models/ground/tree_lights-compressed.glb"],
 ] as Source[]
 
 export const entrySources = [
