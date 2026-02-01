@@ -10,7 +10,6 @@ import {
     Mesh,
     MeshBasicMaterial,
     Object3D,
-    Quaternion,
     Vector2,
     Vector3,
 } from "three/webgpu"
