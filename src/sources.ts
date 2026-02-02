@@ -72,9 +72,37 @@ export const textureSources = [
         },
     ],
     [
-        "crystalStructureTexture",
+        "crystalStructureBaseTexture",
         "ktx2",
-        "/texture/crystal_structure/crystal_structure.ktx2",
+        "/texture/crystal_structure/baked_crystal_structure_base.ktx2",
+        (source: Texture) => {
+            source.flipY = false
+            source.colorSpace = SRGBColorSpace
+            source.minFilter = LinearFilter
+            source.magFilter = LinearFilter
+            source.generateMipmaps = false
+            source.wrapS = ClampToEdgeWrapping
+            source.wrapT = ClampToEdgeWrapping
+        },
+    ],
+    [
+        "crystalStructureFloatMetalTexture",
+        "ktx2",
+        "/texture/crystal_structure/baked_crystal_structure_float_metal.ktx2",
+        (source: Texture) => {
+            source.flipY = false
+            source.colorSpace = SRGBColorSpace
+            source.minFilter = LinearFilter
+            source.magFilter = LinearFilter
+            source.generateMipmaps = false
+            source.wrapS = ClampToEdgeWrapping
+            source.wrapT = ClampToEdgeWrapping
+        },
+    ],
+    [
+        "crystalStructureInnerBrightCrystalTexture",
+        "ktx2",
+        "/texture/crystal_structure/baked_crystal_structure_inner_bright_crystal.ktx2",
         (source: Texture) => {
             source.flipY = false
             source.colorSpace = SRGBColorSpace
@@ -113,8 +141,6 @@ export const textureSources = [
             source.wrapT = ClampToEdgeWrapping
         },
     ],
-    // ["terrainGrassTexture", "ktx2", "/texture/terrainGrass/terrainGrass.ktx2"],
-    // ["treeLights", "gltfModel", "/models/ground/tree_lights-compressed.glb"],
 ] as Source[]
 
 export const entrySources = [
