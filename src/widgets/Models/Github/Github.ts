@@ -1,8 +1,5 @@
 import { color, float, texture } from "three/tsl"
-import type {
-    Mesh,
-    MeshStandardMaterial,
-} from "three/webgpu"
+import type { Mesh, MeshStandardMaterial } from "three/webgpu"
 import { Object3D, Vector3 } from "three/webgpu"
 import { MeshDefaultMaterial } from "../../Materials/MeshDefaultMaterial"
 import { BaseModel } from "../BaseModel"
@@ -53,7 +50,7 @@ export class Github extends BaseModel {
 
                 const defaultMaterial = new MeshDefaultMaterial(materialParams)
                 mesh.material = defaultMaterial
-                if(this.modelGroup) {
+                if (this.modelGroup) {
                     this.modelGroup.add(mesh)
                 }
             }

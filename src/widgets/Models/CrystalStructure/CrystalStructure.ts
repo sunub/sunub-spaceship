@@ -1,23 +1,18 @@
 import { ColliderDesc, RigidBodyDesc } from "@dimforge/rapier3d-compat"
 import { texture } from "three/tsl"
-import {
-    Box3,
-    Mesh,
-    Object3D,
-    Vector3,
-} from "three/webgpu"
+import { Box3, Mesh, Object3D, Vector3 } from "three/webgpu"
+import type Resources from "@/utils/Resources"
 import type { Physics } from "@/widgets/Physics"
 import { MeshDefaultMaterial } from "../../Materials/MeshDefaultMaterial"
 import { BaseModel } from "../BaseModel"
-import type Resources from "@/utils/Resources"
 
 export class CrystalStructure extends BaseModel {
-    private resouce!: Resources;
-    private floatBrightCrystals: Mesh[] = [];
-    private floatMetals: Mesh[] = [];
-    private initialCrystalY: Map<number, number> = new Map();
-    private initialMetalScale: Map<number, Vector3> = new Map();
-    private time: number = 0;
+    private resouce!: Resources
+    private floatBrightCrystals: Mesh[] = []
+    private floatMetals: Mesh[] = []
+    private initialCrystalY: Map<number, number> = new Map()
+    private initialMetalScale: Map<number, Vector3> = new Map()
+    private time: number = 0
 
     constructor(position: Vector3 = new Vector3(0, 0, 0)) {
         super("crystalStructure", position)
@@ -25,7 +20,7 @@ export class CrystalStructure extends BaseModel {
 
     protected setupModelStructure(clonedModel: Object3D): void {
         if (!this.context) {
-            return;
+            return
         }
         this.resouce = this.context.resources
 
@@ -34,40 +29,44 @@ export class CrystalStructure extends BaseModel {
 
         clonedModel.updateMatrixWorld(true)
 
-        const bakedBaseTexture = this.resouce.getItem("crystalStructureBaseTexture");
-        const bakedFloatMetalTexture = this.resouce.getItem("crystalStructureFloatMetalTexture");
+        const bakedBaseTexture = this.resouce.getItem(
+            "crystalStructureBaseTexture",
+        )
+        const bakedFloatMetalTexture = this.resouce.getItem(
+            "crystalStructureFloatMetalTexture",
+        )
 
         clonedModel.traverse((child) => {
             if (child instanceof Mesh) {
-                if (child.name.includes('ground_base')) {
+                if (child.name.includes("ground_base")) {
                     const newMat = new MeshDefaultMaterial({
                         colorNode: texture(bakedBaseTexture),
                         emissionNode: texture(bakedBaseTexture).mul(2.5),
                         hasCoreShadows: false,
                         hasLightBounce: false,
                     })
-                    child.material = newMat;
-                } else if (child.name.includes('float_metal')) {
+                    child.material = newMat
+                } else if (child.name.includes("float_metal")) {
                     const newMat = new MeshDefaultMaterial({
                         colorNode: texture(bakedFloatMetalTexture),
                         emissionNode: texture(bakedFloatMetalTexture).mul(2.5),
                         hasCoreShadows: false,
                         hasLightBounce: false,
                     })
-                    child.material = newMat;
-                    this.floatMetals.push(child as Mesh);
-                    this.initialMetalScale.set(child.id, child.scale.clone());
-                } else if (child.name.includes('bright_crystal')) {
-                    this.floatBrightCrystals.push(child as Mesh);
-                    this.initialCrystalY.set(child.id, child.position.y);
+                    child.material = newMat
+                    this.floatMetals.push(child as Mesh)
+                    this.initialMetalScale.set(child.id, child.scale.clone())
+                } else if (child.name.includes("bright_crystal")) {
+                    this.floatBrightCrystals.push(child as Mesh)
+                    this.initialCrystalY.set(child.id, child.position.y)
                 }
 
-                child.castShadow = true;
-                child.receiveShadow = true;
+                child.castShadow = true
+                child.receiveShadow = true
             }
-        });
+        })
 
-        this.modelGroup.add(clonedModel);
+        this.modelGroup.add(clonedModel)
 
         this.context.scene.add(this.modelGroup)
     }
@@ -111,22 +110,22 @@ export class CrystalStructure extends BaseModel {
     }
 
     public update(_deltaTime: number): void {
-        this.time += _deltaTime;
+        this.time += _deltaTime
 
         this.floatBrightCrystals.forEach((crystal, index) => {
-            crystal.rotation.y += _deltaTime * 0.5;
-            
-            const initialY = this.initialCrystalY.get(crystal.id) || 0;
-            const offset = Math.sin(this.time * 2 + index) * 0.5;
-            crystal.position.y = initialY + offset;
-        });
+            crystal.rotation.y += _deltaTime * 0.5
+
+            const initialY = this.initialCrystalY.get(crystal.id) || 0
+            const offset = Math.sin(this.time * 2 + index) * 0.5
+            crystal.position.y = initialY + offset
+        })
 
         this.floatMetals.forEach((metal, index) => {
-            const initialScale = this.initialMetalScale.get(metal.id);
+            const initialScale = this.initialMetalScale.get(metal.id)
             if (initialScale) {
-                const scaleFactor = 1 + Math.sin(this.time * 2.0 + index) * 0.05;
-                metal.scale.copy(initialScale).multiplyScalar(scaleFactor);
+                const scaleFactor = 1 + Math.sin(this.time * 2.0 + index) * 0.05
+                metal.scale.copy(initialScale).multiplyScalar(scaleFactor)
             }
-        });
+        })
     }
 }
