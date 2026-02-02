@@ -313,7 +313,7 @@ export class Birds implements IGameObject {
     public update(deltaTime: number): void {
         if (!this.context || !this.mesh) return
 
-        const delta = deltaTime * 0.001
+        const delta = deltaTime
         this.timeUniform.value = this.context.time.elapsed * 0.001
         this.deltaUniform.value = delta
 
