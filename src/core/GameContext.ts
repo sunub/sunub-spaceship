@@ -24,8 +24,6 @@ export interface GameContext {
     debug: Debug
     inputManager: InputManager
     resources: Resources
-    domElement: HTMLDivElement
-    canvas: HTMLCanvasElement
     lighting: Lighting
     rapier: typeof RAPIER
     audio: Audio
