@@ -39,9 +39,9 @@ export class Atmosphere extends BaseModel {
         this.context?.scene.add(this.mesh)
     }
 
-    public update(deltaTime: number) {
+    public update() {
         if (this.mesh) {
-            const elapsedTime = deltaTime * 0.001 // ms to s
+            const elapsedTime = this.context.time.delta * 0.001 // ms to s
             this.mesh.rotation.y += elapsedTime * 0.05
             const floatOffset = Math.sin(elapsedTime * 0.2) * 0.2
             this.mesh.position.y = this.position.y + floatOffset

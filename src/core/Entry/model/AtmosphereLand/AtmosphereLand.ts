@@ -40,7 +40,7 @@ export class AtmosphereLand extends BaseModel {
         this.context?.scene.add(mesh)
     }
 
-    public update(_deltaTime: number): void {
-        // this.material.uTime.value += deltaTime
+    public update(): void {
+        this.material.uTime.value += this.context.time.delta * 0.001
     }
 }

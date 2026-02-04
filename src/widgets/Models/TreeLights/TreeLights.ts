@@ -8,16 +8,11 @@ import type {
     Texture,
 } from "three/webgpu"
 import { InstancedMesh, Object3D, Vector3 } from "three/webgpu"
-import { ServiceRegistry } from "@/core/ServiceRegistry"
-import type Resources from "@/utils/Resources"
 import { MeshDefaultMaterial } from "@/widgets/Materials/MeshDefaultMaterial"
 import type { Physics } from "@/widgets/Physics"
 import { BaseModel } from "../BaseModel"
 
 export class TreeLights extends BaseModel {
-    private serviceRegistry = ServiceRegistry.getInstance()
-    private resources: Resources =
-        this.serviceRegistry.get<Resources>("resources")
     private colliderMeshes: Mesh[] = []
 
     constructor(position: Vector3 = new Vector3(0, 0, 0)) {
@@ -49,7 +44,7 @@ export class TreeLights extends BaseModel {
             }
         >()
 
-        const treeLightTexture = this.resources.items
+        const treeLightTexture = this.context.resources.items
             .treeLightsTexture as Texture
 
         clonedModel.traverse((child) => {

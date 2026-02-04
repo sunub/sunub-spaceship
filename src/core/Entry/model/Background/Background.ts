@@ -30,24 +30,26 @@ import type { GameContext, IGameObject } from "@/core/GameContext"
 const ROTATION_SPEED = 0.01
 
 export class Background implements IGameObject {
-    public bloomColor: UniformNode<Color>
-    public bloomIntensity: UniformNode<number>
-    public starsOffset: UniformNode<Vector2>
-    public starTexture: Texture
-
+    public bloomColor!: UniformNode<Color>
+    public bloomIntensity!: UniformNode<number>
+    public starsOffset!: UniformNode<Vector2>
+    public starTexture!: Texture
     public mesh!: Mesh
 
-    constructor(private context: GameContext) {
+    private context!: GameContext
+
+    constructor() {}
+    
+    public async initialize(context: GameContext) {
+        this.context = context
         this.starTexture = context.resources.items.behindeTheScene
         this.starTexture.wrapS = RepeatWrapping
         this.starTexture.wrapT = RepeatWrapping
-
+    
         this.bloomColor = uniform(color("#050520"))
         this.bloomIntensity = uniform(0.25)
         this.starsOffset = uniform(vec2(0))
-    }
 
-    public async initialize() {
         const geometry = new BoxGeometry(500, 500, 500)
         const material = new MeshBasicMaterial({
             side: BackSide,
@@ -93,8 +95,8 @@ export class Background implements IGameObject {
         this.context.scene.add(this.mesh)
     }
 
-    public update(deltaTime: number) {
-        const deltaSeconds = deltaTime * 0.001
+    public update() {
+        const deltaSeconds = this.context.time.delta * 0.001
         this.mesh.rotation.y += deltaSeconds * ROTATION_SPEED
     }
 

@@ -39,8 +39,8 @@ export class Planet extends BaseModel {
         this.context?.scene.add(mesh)
     }
 
-    public update(deltaTime: number): void {
-        this.material.uTime.value += deltaTime * 0.001
+    public update(): void {
+        this.material.uTime.value += this.context.time.delta * 0.001
         const time = this.material.uTime.value
         const speed = 5.0
 

@@ -199,8 +199,8 @@ export class Grass extends BaseModel {
         )
     }
 
-    public update(deltaTime: number) {
-        this.time += deltaTime
+    public update() {
+        this.time += this.context.time.delta
         if (this.grassMaterial) {
             this.grassMaterial.time = this.time * 0.001
 

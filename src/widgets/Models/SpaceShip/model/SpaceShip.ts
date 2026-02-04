@@ -18,23 +18,19 @@ import { JoyStick } from "@/widgets/controllers/JoyStick"
 import { TweakPane } from "@/widgets/TweakPane"
 import { BaseModel } from "../../BaseModel"
 import { EngineFlame } from "../../EngineFlame"
-import { SpaceShipCameraDebugModule } from "../debug/SpaceShip.CameraDebug"
 import { SpaceShipPositionDebugModule } from "../debug/SpaceShip.PositionDebug"
 import { SpaceShipVisualDebugModule } from "../debug/SpaceShip.VisualDebug"
+import { inject, injectable } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+
+@injectable()
 
 export class SpaceShip extends BaseModel {
-    // ─────────────────────────────────────────────────────────────────────────────
-    // 📦 CORE COMPONENTS
-    // ─────────────────────────────────────────────────────────────────────────────
     shipPivot: Object3D | null = null
     private visualPivot: Object3D | null = null
     private flightController: FlightController
-    public joyStick: JoyStick
     private engineFlames: EngineFlame[] = []
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // ⚙️ SETTINGS & STATE
-    // ─────────────────────────────────────────────────────────────────────────────
     private isLocked: boolean = true
 
     // Flame Settings
@@ -69,7 +65,6 @@ export class SpaceShip extends BaseModel {
 
     // 디버그 모듈
     private positionDebugModule: SpaceShipPositionDebugModule
-    private cameraDebugModule: SpaceShipCameraDebugModule
     private visualDebugModule: SpaceShipVisualDebugModule
 
     // Shapecast 설정
@@ -82,13 +77,9 @@ export class SpaceShip extends BaseModel {
     private readonly COLOR_SAFE = 0x0000ff
     private readonly COLOR_HIT = 0xff0000
 
-    constructor() {
+    constructor(@inject(GAME_CONTEXT.JoyStick) public joyStick: JoyStick) {
         super("spaceshipModel", new Vector3(0, 1.15, 0))
 
-        // Joystick 초기화
-        this.joyStick = new JoyStick()
-
-        // 엔진 불꽃 위치 설정
         const positions = [
             new Vector3(-1.1, -0.15, -0.15),
             new Vector3(-1.1, -0.15, 0.175),
@@ -101,16 +92,12 @@ export class SpaceShip extends BaseModel {
 
         this.flightController = new FlightController()
 
-        // 디버그 모듈 초기화
         this.positionDebugModule = new SpaceShipPositionDebugModule(() => ({
             rigidBody: this.rigidBody,
             shipPivot: this.shipPivot,
             mesh: this.mesh,
         }))
 
-        this.cameraDebugModule = new SpaceShipCameraDebugModule()
-
-        // [수정] VisualDebugModule에 필요한 모든 속성 전달
         this.visualDebugModule = new SpaceShipVisualDebugModule(() => ({
             showAxes: this.debugMode,
             axesHelper: this.axesHelper,
@@ -120,7 +107,6 @@ export class SpaceShip extends BaseModel {
             toggleAxesVisibility: () => this.setDebugMode(!this.debugMode),
         }))
 
-        // TweakPane 설정 (URL 파라미터 체크)
         this.setupTweakPane()
     }
 
@@ -232,15 +218,7 @@ export class SpaceShip extends BaseModel {
         this.setDebugMode(this.debugMode)
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // 🛠️ DEBUG METHODS (Unified)
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * 디버깅용 3D 객체(박스, 축 등)를 생성하여 메모리에 올립니다.
-     */
     private initDebugVisuals() {
-        // 1. Shapecast 범위 박스
         const geometry = new BoxGeometry(
             this.castShapeHalfExtents.x * 2,
             this.castShapeHalfExtents.y * 2,
@@ -266,7 +244,7 @@ export class SpaceShip extends BaseModel {
         this.axesHelper = new AxesHelper(1.5)
         this.debugGroup.add(this.axesHelper)
 
-        // [수정] 3. 개별 축 헬퍼 (VisualDebugContext 요구사항)
+        //  3. 개별 축 헬퍼 (VisualDebugContext 요구사항)
         this.rollAxisHelper = new ArrowHelper(
             new Vector3(1, 0, 0),
             new Vector3(0, 0, 0),
@@ -303,9 +281,6 @@ export class SpaceShip extends BaseModel {
         }
     }
 
-    /**
-     * 디버그 모드를 켜거나 끕니다. 모든 시각적 보조 도구를 제어합니다.
-     */
     public setDebugMode(isEnabled: boolean) {
         this.debugMode = isEnabled
 
@@ -320,9 +295,6 @@ export class SpaceShip extends BaseModel {
         console.log(`🛠️ SpaceShip Debug Mode: ${isEnabled ? "ON" : "OFF"}`)
     }
 
-    /**
-     * TweakPane 설정 (URL 파라미터 '?debug=spaceship' 감지)
-     */
     private setupTweakPane() {
         const urlParams = new URLSearchParams(window.location.search)
         const debugParam = urlParams.get("debug")
@@ -355,25 +327,26 @@ export class SpaceShip extends BaseModel {
             )
 
             this.positionDebugModule.setupDebugControls(f)
-            this.cameraDebugModule.setupDebugControls(f)
-
-            // [수정] visualDebugModule 사용 (Unused Variable 에러 해결)
             this.visualDebugModule.setupDebugControls(f)
         }
     }
 
-    public updatePhysics(deltaTime: number) {
-        if (!this.rigidBody || !this.context || !this.shipPivot) return
+    public updatePhysics() {
+        if (!this.rigidBody || !this.context || !this.shipPivot) {
+            return
+        }
 
         this.updateShapecast()
 
         if (!this.isLocked) {
-            this.flightController.handleMovement(this.rigidBody, deltaTime)
+            this.flightController.handleMovement(this.rigidBody, this.context.time.delta)
         }
     }
 
-    public update(deltaTime: number) {
-        if (!this.rigidBody || !this.shipPivot || !this.context) return
+    public update() {
+        if (!this.rigidBody || !this.shipPivot || !this.context) {
+            return
+        }
 
         // 1. 물리 위치 동기화 (보간 없이 직접 동기화)
         // Variable Physics Timestep을 사용하므로 화면 갱신과 물리 갱신이 1:1로 동기화됨
@@ -390,8 +363,8 @@ export class SpaceShip extends BaseModel {
 
         // 2. 컴포넌트 업데이트
         this.updateCameraTracking()
-        this.processInputAndVisuals(deltaTime)
-        this.updateFlameLength(deltaTime)
+        this.processInputAndVisuals()
+        this.updateFlameLength()
     }
 
     // 전방 장애물 감지 로직 (ShapeCast)
@@ -461,7 +434,7 @@ export class SpaceShip extends BaseModel {
         }
     }
 
-    private processInputAndVisuals(deltaTime: number) {
+    private processInputAndVisuals() {
         if (
             !this.rigidBody ||
             !this.shipPivot ||
@@ -469,7 +442,7 @@ export class SpaceShip extends BaseModel {
             this.isLocked
         )
             return
-        this.joyStick.update(deltaTime, this.context, this.shipPivot.position)
+        this.joyStick.update(this.context, this.shipPivot.position)
 
         const input = this.context.inputManager
         const thrustInput =
@@ -531,24 +504,24 @@ export class SpaceShip extends BaseModel {
         }
     }
 
-    private updateFlameLength(deltaTime: number) {
+    private updateFlameLength() {
         const thrustLevel = this.flightController.getSmoothedThrust()
         const absThrust = Math.abs(thrustLevel)
         if (absThrust > 0.05) {
             this.currentFlameLength = Math.min(
                 this.maxFlameLength,
-                this.currentFlameLength + this.flameGrowthSpeed * deltaTime,
+                this.currentFlameLength + this.flameGrowthSpeed * this.context.time.delta,
             )
         } else {
             this.currentFlameLength = Math.max(
                 0.1,
-                this.currentFlameLength - this.flameShrinkSpeed * deltaTime,
+                this.currentFlameLength - this.flameShrinkSpeed * this.context.time.delta,
             )
         }
         this.engineFlames.forEach((flame) => {
             flame.setThrust(absThrust)
             flame.setFlameLength(this.currentFlameLength)
-            flame.update(deltaTime)
+            flame.update(this.context.time.delta)
         })
     }
 
@@ -557,7 +530,7 @@ export class SpaceShip extends BaseModel {
     // ─────────────────────────────────────────────────────────────────────────────
 
     public setupInputListeners(): void {
-        const domElement = this.context.domElement
+        const domElement = this.context.rendering.renderer.domElement
         domElement.addEventListener(
             "pointerdown",
             (event: PointerEvent) => {

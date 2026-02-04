@@ -109,23 +109,15 @@ export class CrystalStructure extends BaseModel {
         physics.world.createCollider(colliderDesc, this.rigidBody)
     }
 
-    public update(_deltaTime: number): void {
-        this.time += _deltaTime
+    public update(): void {
+        this.time += this.context.time.delta
 
         this.floatBrightCrystals.forEach((crystal, index) => {
-            crystal.rotation.y += _deltaTime * 0.5
+            crystal.rotation.y += this.context.time.delta * 0.001
 
             const initialY = this.initialCrystalY.get(crystal.id) || 0
-            const offset = Math.sin(this.time * 2 + index) * 0.5
+            const offset = Math.sin(this.time * 2 + index) * 0.001
             crystal.position.y = initialY + offset
-        })
-
-        this.floatMetals.forEach((metal, index) => {
-            const initialScale = this.initialMetalScale.get(metal.id)
-            if (initialScale) {
-                const scaleFactor = 1 + Math.sin(this.time * 2.0 + index) * 0.05
-                metal.scale.copy(initialScale).multiplyScalar(scaleFactor)
-            }
         })
     }
 }
