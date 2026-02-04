@@ -3,7 +3,6 @@ import { Vector3 } from "three/webgpu"
 import { Entry } from "@/core/Entry"
 import type { GameContext, IController, IGameObject } from "../core/GameContext"
 import { ProjectRegistry } from "../core/ProjectRegistry"
-import { ServiceRegistry } from "../core/ServiceRegistry"
 import { InputManager } from "../Inputs/InputManager"
 import Resources from "../utils/Resources"
 import { Size } from "../utils/Size"
@@ -33,55 +32,53 @@ import { Rendering } from "./Rendering"
 import { Scene } from "./Scene"
 import { Notification } from "./UI/Notification"
 import { TerminalOverlay } from "./UI/TerminalOverlay"
+import { inject, injectable } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
 
+
+@injectable()
 export class Game {
     public isReady: boolean = false
     public isPausedByVisibility: boolean = false
     private shouldResetTime: boolean = false
 
-    private static instance: Game
-    private domElement!: HTMLDivElement
-    private canvasElement!: HTMLCanvasElement
-    private serviceRegistry = ServiceRegistry.getInstance()
-
     // Game 내부에서 접근이 필요한 주요 시스템들
-    public rendering!: Rendering
-    public scene!: Scene
-    public camera!: Camera
-    public physics!: Physics
-    public time!: Time
-    public size!: Size
     public debug!: Debug
-    public inputManager!: InputManager
-    public resources!: Resources
-    public cssRenderer!: CSSRenderer
-    public lighting!: Lighting
     public terrain!: Floor
     public fog!: FixedNightFog
     public entry!: Entry
     public rapier!: typeof RAPIER
-    public audio!: Audio
     public notification!: Notification
 
     // Game Objects & Controllers 관리
     private gameObjects: IGameObject[] = []
     private controllers: IController[] = []
     private projectOutposts: ProjectOutpost[] = []
+    
+    // SpaceShip은 이제 주입받으므로 초기화가 보장됨 (하지만 initialize 호출은 필요함)
     public spaceShip!: SpaceShip
     private isRendering = false
 
     private terminalOverlay!: TerminalOverlay
     private lastInteractionTime: number = 0
     private readonly INTERACTION_COOLDOWN: number = 500
+    
+    private _contextCache: GameContext | null = null;
 
-    static getInstance(): Game {
-        if (!Game.instance) {
-            Game.instance = new Game()
-        }
-        return Game.instance
-    }
-
-    private constructor() {}
+    constructor(
+        @inject(GAME_CONTEXT.Time) private time: Time,
+        @inject(GAME_CONTEXT.Size) private size: Size,
+        @inject(GAME_CONTEXT.InputManager) private inputManager: InputManager,
+        @inject(GAME_CONTEXT.Resources) private resources: Resources,
+        @inject(GAME_CONTEXT.Lighting) private lighting: Lighting,
+        @inject(GAME_CONTEXT.Scene) private scene: Scene,
+        @inject(GAME_CONTEXT.Camera) private camera: Camera,
+        @inject(GAME_CONTEXT.Physics) private physics: Physics,
+        @inject(GAME_CONTEXT.Rendering) private rendering: Rendering,
+        @inject(GAME_CONTEXT.CSSRenderer) private cssRenderer: CSSRenderer,
+        @inject(GAME_CONTEXT.Audio) private audio: Audio,
+        @inject(GAME_CONTEXT.SpaceShipFactory) private spaceShipFactory: () => SpaceShip
+    ) {}
 
     get sceneObjects() {
         return [
@@ -102,34 +99,6 @@ export class Game {
         ]
     }
 
-    public async init() {
-        this.domElement = document.querySelector(".root") as HTMLDivElement
-        this.canvasElement = this.domElement.querySelector(
-            ".canvas",
-        ) as HTMLCanvasElement
-
-        this.time = new Time()
-        this.size = new Size()
-        this.scene = new Scene()
-        this.camera = new Camera()
-        this.physics = new Physics()
-        this.inputManager = InputManager.getInstance()
-        this.resources = new Resources()
-        this.audio = new Audio()
-        this.registerAllServices()
-
-        this.rendering = new Rendering()
-        await this.rendering.setRenderer()
-        this.cssRenderer = new CSSRenderer()
-        this.lighting = new Lighting(this)
-
-        const gameContext = this.getContext()
-        this.entry = new Entry(gameContext)
-        this.terminalOverlay = new TerminalOverlay(gameContext)
-        this.notification = new Notification()
-        await this.entry.init()
-    }
-
     public async prepareGameObjects() {
         const context = this.getContext()
         const sceneObjectsPromises = this.sceneObjects.map(async (obj) => {
@@ -141,7 +110,7 @@ export class Game {
         })
         await Promise.all(sceneObjectsPromises)
 
-        const spaceShip = new SpaceShip()
+        const spaceShip = this.spaceShipFactory()
         await spaceShip.initialize(context)
         this.addGameObject(spaceShip)
         this.spaceShip = spaceShip
@@ -220,26 +189,12 @@ export class Game {
         document.body.insertAdjacentHTML("beforeend", html)
     }
 
-    private registerAllServices() {
-        this.serviceRegistry.register("game", this)
-        this.serviceRegistry.register("domElement", this.domElement)
-        this.serviceRegistry.register("canvas", this.canvasElement)
-        this.serviceRegistry.register("debug", this.debug)
-        this.serviceRegistry.register("time", this.time)
-        this.serviceRegistry.register("size", this.size)
-        this.serviceRegistry.register("scene", this.scene)
-        this.serviceRegistry.register("camera", this.camera)
-        this.serviceRegistry.register("physics", this.physics)
-        this.serviceRegistry.register("inputManager", this.inputManager)
-        this.serviceRegistry.register("cssRenderer", this.cssRenderer)
-        this.serviceRegistry.register("resources", this.resources)
-        this.serviceRegistry.register("lighting", this.lighting)
-        this.serviceRegistry.register("rapier", this.rapier)
-        this.serviceRegistry.register("audio", this.audio)
-    }
+    public getContext() {
+        if (this._contextCache) {
+            return this._contextCache;
+        }
 
-    public getContext(): GameContext {
-        return {
+        this._contextCache = {
             rendering: this.rendering,
             scene: this.scene,
             camera: this.camera,
@@ -250,13 +205,12 @@ export class Game {
             inputManager: this.inputManager,
             resources: this.resources,
             cssRenderer: this.cssRenderer,
-            domElement: this.domElement,
-            canvas: this.canvasElement,
             lighting: this.lighting,
             rapier: this.rapier,
             audio: this.audio,
             game: this,
         }
+        return this._contextCache;
     }
 
     public addGameObject(obj: IGameObject): void {
@@ -270,11 +224,11 @@ export class Game {
     public removeController(controller: IController): void {
         const index = this.controllers.indexOf(controller)
         if (index > -1) {
-            this.controllers.splice(index, 1)
+        this.controllers.splice(index, 1)
         }
     }
 
-    public start() {
+    public startGameLoop() {
         this.rendering.renderer.setAnimationLoop(this.gameLoop.bind(this))
     }
 
@@ -288,7 +242,9 @@ export class Game {
     }
 
     private setupEnvironment() {
-        this.fog = new FixedNightFog()
+        this.fog = new FixedNightFog(this.getContext())
+        this.notification = new Notification()
+        this.terminalOverlay = new TerminalOverlay(this.getContext())
     }
 
     public setupEvents() {
