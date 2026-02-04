@@ -25,6 +25,10 @@ import {
     Vector3,
 } from "three/webgpu"
 import type { GameContext } from "@/core/GameContext"
+import { injectable } from "inversify"
+import "reflect-metadata"
+
+@injectable()
 
 export class JoyStick {
     public centerX: number
@@ -182,36 +186,36 @@ export class JoyStick {
 
         this.setDebugMode(this.debugMode)
 
-        context.rendering.renderer.domElement.addEventListener(
-            "pointerdown",
-            (e) => {
-                if (e.button !== 0) {
-                    return
-                }
+        // context.rendering.renderer.domElement.addEventListener(
+        //     "pointerdown",
+        //     (e) => {
+        //         if (e.button !== 0) {
+        //             return
+        //         }
 
-                this.isDragging = true
-                this.plane.visible = true
-                this.uIsActive.value = 1.0
-                this.updatePointerNDC(e)
-            },
-        )
-        context.rendering.renderer.domElement.addEventListener(
-            "pointerup",
-            () => {
-                this.isDragging = false
-                this.plane.visible = false
-                this.uIsActive.value = 0.0
-                this.outputVector.set(0, 0)
-            },
-        )
-        context.rendering.renderer.domElement.addEventListener(
-            "pointermove",
-            (e) => {
-                if (this.isDragging) {
-                    this.updatePointerNDC(e)
-                }
-            },
-        )
+        //         this.isDragging = true
+        //         this.plane.visible = true
+        //         this.uIsActive.value = 1.0
+        //         this.updatePointerNDC(e)
+        //     },
+        // )
+        // context.rendering.renderer.domElement.addEventListener(
+        //     "pointerup",
+        //     () => {
+        //         this.isDragging = false
+        //         this.plane.visible = false
+        //         this.uIsActive.value = 0.0
+        //         this.outputVector.set(0, 0)
+        //     },
+        // )
+        // context.rendering.renderer.domElement.addEventListener(
+        //     "pointermove",
+        //     (e) => {
+        //         if (this.isDragging) {
+        //             this.updatePointerNDC(e)
+        //         }
+        //     },
+        // )
     }
 
     public updatePointerNDC(event: PointerEvent) {
@@ -244,41 +248,63 @@ export class JoyStick {
     }
 
     public update(
-        deltaTime: number,
         context: GameContext,
         targetPosition: Vector3,
     ) {
-        if (!this.isDragging) {
-            return
-        }
         if (this.isLocked) {
             return
         }
 
-        this.plane.position.set(targetPosition.x, 0.1, targetPosition.z)
+        const inputState = context.inputManager.getPointerState()
+        
+        // 드래그 시작 로직
+        if (inputState.isDown) {
+            if (!this.isDragging) {
+                this.isDragging = true
+                this.plane.visible = true
+                this.uIsActive.value = 1.0
+            }
+        
+            this.pointer.x = inputState.x
+            this.pointer.y = inputState.y
 
-        const relativeVector = this.calculatePointerVector(
-            context.camera.instance,
-            targetPosition,
-        )
-        const output = new Vector2(relativeVector.x, relativeVector.z)
+            this.plane.position.set(targetPosition.x, 0.1, targetPosition.z)
 
-        this.uPointerDirection.value.set(output.x, -output.y)
-        this.uTime.value = deltaTime
+            const relativeVector = this.calculatePointerVector(
+                context.camera.instance,
+                targetPosition,
+            )
+            
+            // Output 계산
+            const output = new Vector2(relativeVector.x, relativeVector.z)
+            // 최대 반경 제한
+            const distance = output.length()
+            if (distance > this.maxRadius) {
+                output.normalize().multiplyScalar(this.maxRadius)
+            }
+            
+            // 정규화된 조이스틱 값 (0~1)
+            const normalizedJoyStickValue = output
+                .clone()
+                .divideScalar(this.maxRadius)
+            this.outputVector.copy(normalizedJoyStickValue)
 
-        // 최대 반경내로 제한
-        const distance = output.length()
-        if (distance > this.maxRadius) {
-            output.normalize().multiplyScalar(this.maxRadius)
-        }
-        // 최종 조이스틱 값 (0~1 범위로 정규화하고 싶을 경우)
-        const normalizedJoyStickValue = output
-            .clone()
-            .divideScalar(this.maxRadius)
-        this.outputVector.copy(normalizedJoyStickValue)
+            // Shader Uniforms 업데이트
+            this.uPointerDirection.value.set(output.x, -output.y)
+            this.uTime.value = context.time.delta
 
-        if (this.debugMode) {
-            this.updateDebug(targetPosition, relativeVector, output)
+            if (this.debugMode) {
+                this.updateDebug(targetPosition, relativeVector, output)
+            }
+
+        } else {
+             // 드래그 종료 로직
+            if (this.isDragging) {
+                this.isDragging = false
+                this.plane.visible = false
+                this.uIsActive.value = 0.0
+                this.outputVector.set(0, 0)
+            }
         }
     }
 

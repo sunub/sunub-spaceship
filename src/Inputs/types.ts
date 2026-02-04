@@ -32,6 +32,14 @@ export type ActionType =
     | "TurnRight"
     | "Interact"
 
+export interface PointerState {
+    isDown: boolean;
+    x: number;
+    y: number;
+    screenX: number;
+    screenY: number;
+}
+
 export type InputConfig = Record<ActionType, KeyboardKeys[]>
 
 export type InputMap = {

@@ -1,11 +1,15 @@
-import type { ActionType, InputConfig, KeyboardKeys } from "./types"
+import { inject, injectable } from "inversify"
+import type { ActionType, InputConfig, KeyboardKeys, PointerState } from "./types"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { DOMManager } from "@/core/DOMManger"
 
 type InputListener = (active: boolean) => void
 
+@injectable()
 export class InputManager {
-    private static instance: InputManager
     private isLocked: boolean = false
 
+    // 키보드 설정
     private config: InputConfig = {
         MoveForward: ["KeyW", "ArrowUp"],
         MoveBackward: ["KeyS", "ArrowDown"],
@@ -14,18 +18,58 @@ export class InputManager {
         Interact: ["KeyE"],
     }
 
+    // 포인터 설정
+    private pointer: PointerState = {
+        isDown: false,
+        x: 0,
+        y: 0,
+        screenX: 0,
+        screenY: 0,
+    }
+
     private pressedKeys = new Set<KeyboardKeys>()
     private listeners = new Map<ActionType, Set<InputListener>>()
 
-    static getInstance(): InputManager {
-        if (!InputManager.instance) {
-            InputManager.instance = new InputManager()
-        }
-        return InputManager.instance
+    constructor(
+        @inject(GAME_CONTEXT.DOMManager) private domManager: DOMManager,
+    ) {
+        this.setupEventListeners()
+        this.setupPointerListeners()
     }
 
-    constructor() {
-        this.setupEventListeners()
+    private setupPointerListeners() {
+        const { canvas } = this.domManager
+        canvas.addEventListener("pointerdown", (e) => {
+            if (this.isLocked) {
+                return
+            }
+            this.pointer.isDown = true
+            this.updatePointerInfo(e);
+        })
+        canvas.addEventListener("pointermove", (e) => {
+            if (this.isLocked) {
+                return
+            }
+            this.updatePointerInfo(e);
+        })
+
+        const endHandler = () => {
+            if (this.isLocked) {
+                return
+            }
+            this.pointer.isDown = false;
+        }
+        canvas.addEventListener("pointerup", endHandler)
+        canvas.addEventListener("pointerleave", endHandler)
+        canvas.addEventListener("pointercancel", endHandler)
+    }
+
+     private updatePointerInfo(e: PointerEvent) {
+        this.pointer.screenX = e.clientX;
+        this.pointer.screenY = e.clientY;
+        
+        this.pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+        this.pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
     }
 
     private setupEventListeners() {
@@ -64,6 +108,10 @@ export class InputManager {
         }
 
         return this.config[action].some((key) => this.pressedKeys.has(key))
+    }
+
+     public getPointerState(): Readonly<PointerState> {
+        return this.pointer;
     }
 
     public subscribe(action: ActionType, callback: InputListener) {
