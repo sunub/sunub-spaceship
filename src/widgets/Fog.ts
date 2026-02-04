@@ -1,9 +1,9 @@
+import type { GameContext } from "@/core/GameContext"
 import type MathNode from "three/src/nodes/math/MathNode.js"
 import type { ShaderNodeObject } from "three/tsl"
 import { fog, mix, rangeFogFactor, uniform, vec2, viewportUV } from "three/tsl"
-import type { Node, Scene, Vector2 } from "three/webgpu"
+import type { Node, Vector2 } from "three/webgpu"
 import { Color } from "three/webgpu"
-import { ServiceRegistry } from "@/core/ServiceRegistry"
 
 const NIGHT_FOG = {
     colorA: new Color("#10266f"),
@@ -24,10 +24,8 @@ export class FixedNightFog {
     public far: UniformNode<number>
     public strength: ShaderNodeObject<Node>
 
-    private registry = ServiceRegistry.getInstance()
-
-    constructor(nearDistance = 10, farDistance = 50) {
-        const scene = this.registry.get<Scene>("scene")
+    constructor(context: GameContext, nearDistance = 10, farDistance = 50) {
+        const scene = context.scene
         this.colorA = uniform(NIGHT_FOG.colorA)
         this.colorB = uniform(NIGHT_FOG.colorB)
         this.radialCenter = uniform(vec2(0, 0))

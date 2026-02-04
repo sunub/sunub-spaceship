@@ -7,50 +7,47 @@ import {
     ReinhardToneMapping,
     WebGPURenderer,
 } from "three/webgpu"
-import { ServiceRegistry } from "../core/ServiceRegistry"
 import type { Size } from "../utils/Size"
-import type { Camera } from "./Camera"
 import { cheapDOF } from "./Passes/CheapDOF"
 import type { Scene } from "./Scene"
 import { TweakPane } from "./TweakPane"
+import { inject } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { Camera } from "./Camera"
 
 export class Rendering {
-    private _size!: Size
-    private _scene!: Scene
-    private _camera!: Camera
-
     public renderer!: WebGPURenderer
 
     private postProcessing!: PostProcessing
     public bloomPass!: ReturnType<typeof bloom>
     private cheapDOFPass!: ReturnType<typeof cheapDOF>
-    private registry: ServiceRegistry
     private stats: any
     private fpsStats: Stats | null = null
 
     private bloomPanel: any
     private toneMappingPanel: any
     private blurPanel: any
+    private camera!: Camera
 
-    constructor() {
-        this.registry = ServiceRegistry.getInstance()
+    constructor(
+        @inject(GAME_CONTEXT.Size) private size: Size,
+        @inject(GAME_CONTEXT.Scene) private scene: Scene,
+    ) {
     }
 
-    async setRenderer() {
-        const registry = this.registry
-        this._size = registry.get<Size>("size")
-        this._scene = registry.get<Scene>("scene")
-        this._camera = registry.get<Camera>("camera")
+    public setCamera(camera: Camera) {
+        this.camera = camera
+    }
 
+    async setRenderer(canvas: HTMLCanvasElement) {
         this.renderer = new WebGPURenderer({
-            canvas: registry.get<HTMLCanvasElement>("canvas"),
+            canvas,
             forceWebGL: false,
-            antialias: this._size.pixelRatio < 2,
+            antialias: this.size.pixelRatio < 2,
         })
-        registry.register("renderer", this.renderer)
 
-        this.renderer.setSize(this._size.width, this._size.height)
-        this.renderer.setPixelRatio(this._size.pixelRatio)
+        this.renderer.setSize(this.size.width, this.size.height)
+        this.renderer.setPixelRatio(this.size.pixelRatio)
         this.renderer.sortObjects = true
         this.renderer.shadowMap.enabled = true
         this.renderer.toneMapping = ReinhardToneMapping
@@ -68,9 +65,13 @@ export class Rendering {
     }
 
     public setPostProcessing() {
+        if(!this.camera) {
+            throw new Error("Using 'setCamera' before 'setPostProcessing'")
+        }
+
         this.postProcessing = new PostProcessing(this.renderer)
 
-        const scenePass = pass(this._scene, this._camera.instance)
+        const scenePass = pass(this.scene, this.camera.instance)
         const scenePassColor = scenePass.getTextureNode("output")
 
         this.bloomPass = bloom(scenePassColor)
@@ -211,7 +212,7 @@ export class Rendering {
         if (this.postProcessing) {
             await this.postProcessing.render()
         } else {
-            this.renderer.render(this._scene, this._camera.instance)
+            this.renderer.render(this.scene, this.camera.instance)
         }
 
         if (this.fpsStats) {
@@ -223,19 +224,9 @@ export class Rendering {
         }
     }
 
-    get size(): Size {
-        return this._size
-    }
-    get scene(): Scene {
-        return this._scene
-    }
-    get camera(): Camera {
-        return this._camera
-    }
-
     resize() {
-        this.renderer.setSize(this._size.width, this._size.height)
-        this.renderer.setPixelRatio(this._size.pixelRatio)
+        this.renderer.setSize(this.size.width, this.size.height)
+        this.renderer.setPixelRatio(this.size.pixelRatio)
         this.setPostProcessing()
     }
 

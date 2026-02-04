@@ -310,10 +310,10 @@ export class Birds implements IGameObject {
         this.context.scene.add(this.modelGroup)
     }
 
-    public update(deltaTime: number): void {
+    public update(): void {
         if (!this.context || !this.mesh) return
 
-        const delta = deltaTime
+        const delta = this.context.time.delta
         this.timeUniform.value = this.context.time.elapsed * 0.001
         this.deltaUniform.value = delta
 

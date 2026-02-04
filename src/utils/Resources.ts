@@ -7,8 +7,10 @@ import {
     TextureLoader,
     type WebGPURenderer,
 } from "three/webgpu"
-import { ServiceRegistry } from "@/core/ServiceRegistry"
 import { HDRLoader } from "./HDRLoader.js"
+import { inject, injectable } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes.js"
+import type { Rendering } from "@/widgets/Rendering.js"
 
 export type LoaderType =
     | "gltfModel"
@@ -25,15 +27,15 @@ export type LoaderType =
 
 export type Source = [string, LoaderType, string, ((resource: any) => void)?]
 
+@injectable()
 export default class Resources {
     private loaders = new Map<string, any>()
     public items: Record<string, any> = {}
-    private registry: ServiceRegistry
     private static ktx2Loader: KTX2Loader | null = null
 
-    constructor() {
-        this.registry = ServiceRegistry.getInstance()
-    }
+    constructor(
+        @inject(GAME_CONTEXT.Rendering) private rendering: Rendering,
+    ) {}
 
     public getItem(name: string) {
         return this.items[name]
@@ -49,7 +51,7 @@ export default class Resources {
 
         const getRenderer = () => {
             try {
-                return this.registry.get<WebGPURenderer>("renderer")
+                return this.rendering.renderer
             } catch (_) {
                 console.warn(
                     "Resources: Renderer not found in registry, KTX2Loader might fail if not initialized.",

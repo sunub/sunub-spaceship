@@ -1,5 +1,3 @@
-export { SpaceShipCameraDebugModule } from "./debug/SpaceShip.CameraDebug"
-
 export {
     type SpaceShipPositionDebugContext,
     SpaceShipPositionDebugModule,

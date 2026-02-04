@@ -13,8 +13,11 @@ import {
     Spherical,
     Vector3,
 } from "three/webgpu"
-import { Game } from "./Game"
 import { TweakPane } from "./TweakPane"
+import { inject, injectable } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import { Scene } from "./Scene"
+import type { Camera } from "./Camera"
 
 const NIGHT_PRESET = {
     lightColor: new Color("#6f8dee"),
@@ -42,8 +45,8 @@ interface LightingConfig {
     lightBounceMultiplier: number
 }
 
+@injectable()
 export class Lighting {
-    private game: Game
     private debugPanel: FolderApi | undefined
 
     public light!: DirectionalLight
@@ -87,9 +90,7 @@ export class Lighting {
     private directionHelper!: Mesh
     private shadowHelper!: CameraHelper
 
-    constructor(game?: Game) {
-        this.game = game || Game.getInstance()
-    }
+    constructor(@inject(GAME_CONTEXT.Scene) private scene: Scene, @inject(GAME_CONTEXT.Camera) private camera: Camera) { }
 
     public initialize() {
         // 1. 초기값 설정 (Default Settings)
@@ -180,8 +181,8 @@ export class Lighting {
         // 그림자 카메라 설정 적용
         this.updateShadowCamera(config)
 
-        this.game.scene.add(this.light)
-        this.game.scene.add(this.light.target)
+        this.scene.add(this.light)
+        this.scene.add(this.light.target)
     }
 
     private createHelpers() {
@@ -202,12 +203,12 @@ export class Lighting {
         this.directionHelper.add(
             new Line(lineGeo, new LineBasicMaterial({ color: 0xffff00 })),
         )
-        this.game.scene.add(this.directionHelper)
+        this.scene.add(this.directionHelper)
 
         // 그림자 영역을 보여주는 박스
         this.shadowHelper = new CameraHelper(this.light.shadow.camera)
         this.shadowHelper.visible = false
-        this.game.scene.add(this.shadowHelper)
+        this.scene.add(this.shadowHelper)
     }
 
     private updateShadowCamera(config: LightingConfig) {
@@ -407,8 +408,8 @@ export class Lighting {
         // debugOptions.followCamera가 true면 카메라 타겟을, 아니면 (0,0,0)을 바라봄
         const targetPos = new Vector3(0, 0, 0)
 
-        if (this.debugOptions.followCamera && this.game.camera.orbitControls) {
-            targetPos.copy(this.game.camera.orbitControls.target)
+        if (this.debugOptions.followCamera && this.camera.orbitControls) {
+            targetPos.copy(this.camera.orbitControls.target)
         }
 
         // 3. 조명 위치 업데이트 (Target + Offset)

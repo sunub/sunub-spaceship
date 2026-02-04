@@ -137,6 +137,7 @@ export class TerminalOverlay {
 
         this.isHiding = true
         this.context.game.spaceShip.joyStick.unlock()
+        this.context.rendering.renderer.domElement.focus()
 
         const content = this.element.querySelector(".glass-card") as HTMLElement
 

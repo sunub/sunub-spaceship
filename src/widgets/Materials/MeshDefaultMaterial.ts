@@ -22,7 +22,7 @@ import {
     FrontSide,
     MeshLambertNodeMaterial,
 } from "three/webgpu"
-import { Game } from "../Game.js"
+import type { GameContext } from "@/core/GameContext.js"
 
 interface MeshDefaultMaterialParameters {
     colorNode?:
@@ -50,30 +50,25 @@ interface MeshDefaultMaterialParameters {
 }
 
 export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
-    // [Fix] Game 타입을 any로 처리하여 누락된 속성(reveal 등) 접근 허용
     static revealDiscardNodeBuilder = (
         game: any,
         outputColor: ShaderNodeObject<Node>,
     ) => {
-        // [Fix] Fn의 인자 타입을 명시하여 Iterator 에러 해결
         return Fn(([col]: [ShaderNodeObject<Node>]) => {
             const distanceToCenter = positionWorld.xz
-                .sub(game.reveal.position2Uniform)
-                .length()
+            .sub(game.reveal.position2Uniform)
+            .length()
             distanceToCenter.greaterThan(game.reveal.distance).discard()
 
             const revealMix = distanceToCenter.step(
                 game.reveal.distance.sub(game.reveal.thickness),
             )
-
             const revealColor = game.reveal.color.mul(game.reveal.intensity)
             return mix(col.rgb, revealColor, revealMix)
         })(outputColor)
     }
 
-    private game: Game = Game.getInstance()
 
-    // [Fix] 클래스 내부 private 속성 명시적 선언
     private _colorNode: ShaderNodeObject<Node>
     private _normalNode: ShaderNodeObject<Node>
     private _alphaNode: ShaderNodeObject<Node>
@@ -87,8 +82,18 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
     public hasWater: boolean
     public hasReveal: boolean
 
+    private static context: GameContext
+
+    public static setup(context: GameContext) {
+        MeshDefaultMaterial.context = context;
+    }
+
     constructor(parameters: MeshDefaultMaterialParameters = {}) {
         super()
+        const context = MeshDefaultMaterial.context;
+        if(!context) {
+            throw new Error('MeshDefaultMaterial.setup() must be called first!');
+        }
 
         this.depthWrite = parameters.depthWrite ?? true
         this.depthTest = parameters.depthTest ?? true
@@ -147,53 +152,48 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
                 })
             }
 
-            // [Fix] this.game을 any로 캐스팅하여 내부 속성 접근 에러 우회
-            const game = this.game
-
-            // Light bounce
-            if (this.hasLightBounce && game.terrain) {
+            if (this.hasLightBounce && context.game.terrain) {
                 const bounceOrientation = reorientedNormal
                     .dot(vec3(0, -1, 0))
                     .smoothstep(
-                        game.lighting.lightBounceEdgeLow,
-                        game.lighting.lightBounceEdgeHigh,
+                        context.lighting.lightBounceEdgeLow,
+                        context.lighting.lightBounceEdgeHigh,
                     )
-                const bounceDistance = game.lighting.lightBounceDistance
+                const bounceDistance = context.lighting.lightBounceDistance
                     .sub(max(0, positionWorld.y))
-                    .div(game.lighting.lightBounceDistance)
+                    .div(context.lighting.lightBounceDistance)
                     .max(0)
                     .pow(2)
 
-                const bounceColor = game.lighting.bounceColor
+                const bounceColor = context.lighting.bounceColor
                 outputColor.assign(
                     mix(
                         outputColor,
                         bounceColor,
                         bounceOrientation
                             .mul(bounceDistance)
-                            .mul(game.lighting.lightBounceMultiplier),
+                            .mul(context.lighting.lightBounceMultiplier),
                     ),
                 )
             }
 
             // Light
-            if (game.lighting) {
+            if (context.lighting) {
                 outputColor.mulAssign(
-                    game.lighting.colorUniform.mul(
-                        game.lighting.intensityUniform,
+                    context.lighting.colorUniform.mul(
+                        context.lighting.intensityUniform,
                     ),
                 )
             }
 
             // Core shadow
-            // [Fix] 초기화 타입과 할당 타입 불일치 해결을 위해 명시적 타입 선언
             let coreShadowMix: ShaderNodeObject<Node> = float(0)
-            if (this.hasCoreShadows && game.lighting)
+            if (this.hasCoreShadows && context.lighting)
                 coreShadowMix = reorientedNormal
-                    .dot(game.lighting.directionUniform)
+                    .dot(context.lighting.directionUniform)
                     .smoothstep(
-                        game.lighting.coreShadowEdgeHigh,
-                        game.lighting.coreShadowEdgeLow,
+                        context.lighting.coreShadowEdgeHigh,
+                        context.lighting.coreShadowEdgeLow,
                     )
 
             // Cast shadow
@@ -201,7 +201,7 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
             if (this.hasDropShadows) dropShadowMix = catchedShadow.oneMinus()
 
             // Combined shadows
-            if ((this.hasCoreShadows || this.hasDropShadows) && game.lighting) {
+            if ((this.hasCoreShadows || this.hasDropShadows) && context.lighting) {
                 const combinedShadowMix = max(
                     coreShadowMix,
                     dropShadowMix,
@@ -209,7 +209,7 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
                 ).clamp(0, 1)
 
                 const shadowColor = baseColor.rgb.mul(
-                    game.lighting.shadowColor,
+                    context.lighting.shadowColor,
                 ).rgb
                 outputColor.assign(
                     mix(outputColor, shadowColor, combinedShadowMix),
@@ -222,9 +222,9 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
             // Alpha test discard
             this._alphaNode.lessThan(this.alphaTest).discard()
             // Fog
-            if (this.hasFog && game.fog) {
+            if (this.hasFog && context.game.fog) {
                 outputColor.assign(
-                    game.fog.strength.mix(outputColor, game.fog.color),
+                    context.game.fog.strength.mix(outputColor, context.game.fog.color),
                 )
             }
 

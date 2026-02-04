@@ -1,5 +1,7 @@
 import EventEmitter from "./EventEmitter"
+import { injectable } from "inversify"
 
+@injectable()
 export default class Time extends EventEmitter {
     start: number
     current: number
@@ -52,7 +54,6 @@ export default class Time extends EventEmitter {
 
         const currentTime = performance.now()
         const rawDelta = currentTime - this.current
-        // Smooth delta
         this.delta += (rawDelta - this.delta) * 0.1
 
         this.current = currentTime

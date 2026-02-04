@@ -12,8 +12,6 @@ import {
     Vector2,
     Vector3,
 } from "three/webgpu"
-import type { GameContext } from "@/core/GameContext"
-import { ServiceRegistry } from "@/core/ServiceRegistry"
 import type { Size } from "@/utils/Size"
 import { TweakPane } from "../../TweakPane"
 // Debug Modules
@@ -21,6 +19,10 @@ import { CameraParametersDebugModule } from "../debug/Camera.ParametersDebug"
 import { CameraPositionDebugModule } from "../debug/Camera.PositionDebug"
 import { CameraTargetDebugModule } from "../debug/Camera.TargetDebug"
 import type { CameraConfig } from "../types"
+import { inject, injectable } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type Time from "@/utils/Time"
+import type { DOMManager } from "@/core/DOMManger"
 
 type CameraMode = "orbit" | "follow" | "entry"
 
@@ -70,6 +72,7 @@ interface Pan {
     up: () => void
 }
 
+@injectable()
 export class Camera {
     public container: Object3D
     public instance!: PerspectiveCamera
@@ -86,8 +89,6 @@ export class Camera {
     public mode: CameraMode = "orbit"
     public cameraControls!: CameraControls
     public isTransitioning: boolean = false
-
-    private _context!: GameContext
 
     private parametersDebugModule!: CameraParametersDebugModule
     private positionDebugModule!: CameraPositionDebugModule
@@ -118,15 +119,16 @@ export class Camera {
         },
     }
 
-    constructor() {
+    constructor(
+        @inject(GAME_CONTEXT.Size) private size: Size,
+        @inject(GAME_CONTEXT.Time) private time: Time,
+        @inject(GAME_CONTEXT.DOMManager) private domManager: DOMManager,
+    ) {
         this.container = new Object3D()
         this.container.matrixAutoUpdate = false
     }
 
-    async initialize(context: GameContext) {
-        this._context = context
-        const serviceRegistry = ServiceRegistry.getInstance()
-
+    async initialize() {
         this.setupInstance()
         this.setupZoom()
         this.setupPan()
@@ -135,7 +137,7 @@ export class Camera {
         CameraControls.install({ THREE })
         this.cameraControls = new CameraControls(
             this.instance,
-            this._context.domElement,
+            this.domManager.domElement,
         )
 
         this.setInitialPosition()
@@ -143,10 +145,9 @@ export class Camera {
         this.instance.updateProjectionMatrix()
         this.initializeDebugModules()
 
-        const size = serviceRegistry.get<Size>("size")
-        size.on("resize", () => this.handleResize(size))
+        this.size.on("resize", () => this.handleResize(this.size))
 
-        this._context.time.on("tick", () => {
+        this.time.on("tick", () => {
             if (this.isTransitioning) {
                 this.updateCameraTransformFromAngle()
                 return
@@ -234,20 +235,20 @@ export class Camera {
 
         this.pan.enable = () => {
             this.pan.enabled = true
-            this._context.domElement.classList.add("has-cursor-grab")
+            this.domManager.domElement.classList.add("has-cursor-grab")
         }
 
         this.pan.disable = () => {
             this.pan.enabled = false
-            this._context.domElement.classList.remove("has-cursor-grab")
+            this.domManager.domElement.classList.remove("has-cursor-grab")
         }
 
         this.pan.down = (_x, _y) => {
             if (!this.pan.enabled) return
-            this._context.domElement.classList.add("has-cursor-grabbing")
+            this.domManager.domElement.classList.add("has-cursor-grabbing")
             this.pan.active = true
-            this.pan.mouse.x = (_x / this._context.size.width) * 2 - 1
-            this.pan.mouse.y = -(_y / this._context.size.height) * 2 + 1
+            this.pan.mouse.x = (_x / this.size.width) * 2 - 1
+            this.pan.mouse.y = -(_y / this.size.height) * 2 + 1
             this.pan.raycaster.setFromCamera(this.pan.mouse, this.instance)
             const intersects = this.pan.raycaster.intersectObjects([
                 this.pan.hitMesh,
@@ -260,14 +261,14 @@ export class Camera {
 
         this.pan.move = (_x, _y) => {
             if (!this.pan.enabled || !this.pan.active) return
-            this.pan.mouse.x = (_x / this._context.size.width) * 2 - 1
-            this.pan.mouse.y = -(_y / this._context.size.height) * 2 + 1
+            this.pan.mouse.x = (_x / this.size.width) * 2 - 1
+            this.pan.mouse.y = -(_y / this.size.height) * 2 + 1
             this.pan.needsUpdate = true
         }
 
         this.pan.up = () => {
             this.pan.active = false
-            this._context.domElement.classList.remove("has-cursor-grabbing")
+            this.domManager.domElement.classList.remove("has-cursor-grabbing")
         }
 
         window.addEventListener("mousedown", (e) =>
@@ -278,7 +279,7 @@ export class Camera {
         )
         window.addEventListener("mouseup", () => this.pan.up())
 
-        this._context.time.on("tick", () => {
+        this.time.on("tick", () => {
             if (this.pan.active && this.pan.needsUpdate) {
                 this.pan.raycaster.setFromCamera(this.pan.mouse, this.instance)
                 const intersects = this.pan.raycaster.intersectObjects([
@@ -322,7 +323,7 @@ export class Camera {
             { passive: true },
         )
 
-        this._context.time.on("tick", () => {
+        this.time.on("tick", () => {
             this.zoom.value +=
                 (this.zoom.targetValue - this.zoom.value) * this.zoom.easing
             this.zoom.distance =
@@ -332,9 +333,7 @@ export class Camera {
 
     setupInstance() {
         const { fov, near, far } = this.CAMERA_PARAMS
-        const aspect =
-            this._context.size.width / this._context.size.height ||
-            this.CAMERA_PARAMS.aspect
+        const aspect = this.size.width / this.size.height || this.CAMERA_PARAMS.aspect
         this.instance = new PerspectiveCamera(fov, aspect, near, far)
         this.instance.up.set(0, 1, 0)
 
@@ -346,9 +345,8 @@ export class Camera {
         this.instance.lookAt(new Vector3())
         this.container.add(this.instance)
 
-        this._context.size.on("resize", () => {
-            this.instance.aspect =
-                this._context.size.width / this._context.size.height
+        this.size.on("resize", () => {
+            this.instance.aspect = this.size.width / this.size.height
             this.instance.updateProjectionMatrix()
         })
 
@@ -360,7 +358,7 @@ export class Camera {
     setupOrbitControls() {
         this.orbitControls = new OrbitControls(
             this.instance,
-            this._context.domElement,
+            this.domManager.domElement,
         )
         this.orbitControls.enabled = true
         this.orbitControls.enableKeys = false

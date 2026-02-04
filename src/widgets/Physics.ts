@@ -1,21 +1,26 @@
-import type RAPIER from "@dimforge/rapier3d-compat"
+import * as RAPIER from "@dimforge/rapier3d-compat"
 import type { GameContext } from "@/core/GameContext"
-import EventEmitter from "../utils/EventEmitter"
 import { PhysicsDebug } from "./PhysicsDebug"
 
 const GRAVITY = { x: 0.0, y: -9.81, z: 0.0 }
 
-export class Physics extends EventEmitter {
+export class Physics {
     world!: RAPIER.World
     private debug!: PhysicsDebug
     private isInitialized = false
+    
+    public rapier!: typeof RAPIER | null
 
-    async initialize(context: GameContext): Promise<void> {
-        if (this.isInitialized) {
-            return
+    public setupRapier(initializedRapier: typeof RAPIER) {
+        this.rapier = initializedRapier
+    }
+
+    async initialize(_context: GameContext): Promise<void> {
+        if(!this.rapier) {
+            throw new Error("setupRapier must be called before initialize")
         }
 
-        this.world = new context.rapier.World(GRAVITY)
+        this.world = new this.rapier.World(GRAVITY)
         this.debug = new PhysicsDebug(this.world)
         this.isInitialized = true
         // 디버깅 기능
