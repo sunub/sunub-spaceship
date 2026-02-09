@@ -1,5 +1,4 @@
 import { Vector3 } from "three/webgpu"
-import { TweakPane } from "@/widgets/TweakPane"
 
 export interface ProjectData {
     id: string
@@ -11,22 +10,12 @@ export interface ProjectData {
     image?: string
 }
 
-export class ProjectRegistry {
-    private static instance: ProjectRegistry
+export class Project {
     private projects: ProjectData[] = []
-    private projectPosition: Vector3 = new Vector3(25.2, 0, 20.2)
 
     private constructor() {
         this.initializeDefaultProjects()
     }
-
-    public static getInstance(): ProjectRegistry {
-        if (!ProjectRegistry.instance) {
-            ProjectRegistry.instance = new ProjectRegistry()
-        }
-        return ProjectRegistry.instance
-    }
-
     private initializeDefaultProjects() {
         // 플레이스홀더 데이터를 초기화합니다.
         this.projects.push(
@@ -47,7 +36,7 @@ export class ProjectRegistry {
                     "Styled-Components",
                     "Playwright",
                 ],
-                position: this.projectPosition,
+                position: new Vector3(25.2, 0, 20.2),
             },
             {
                 id: "github",
@@ -59,31 +48,6 @@ export class ProjectRegistry {
                 position: new Vector3(-12, 0, 28),
             },
         )
-
-        // this.debug()
-    }
-
-    // 32 0 8
-    // 25.2 0 20.2
-
-    public debug() {
-        const pane = TweakPane.getInstance()
-        const folder = pane.addFolder({ title: "Project Position" })
-        folder.addBinding(this.projectPosition, "x", {
-            min: -1000,
-            max: 1000,
-            step: 0.1,
-        })
-        folder.addBinding(this.projectPosition, "y", {
-            min: -1000,
-            max: 1000,
-            step: 0.1,
-        })
-        folder.addBinding(this.projectPosition, "z", {
-            min: -1000,
-            max: 1000,
-            step: 0.1,
-        })
     }
 
     public getProjects(): ProjectData[] {
