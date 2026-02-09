@@ -4,7 +4,7 @@ import { GAME_CONTEXT } from "./core/DI/DITypes";
 import { GameBootstrapper } from "./core/GameBootstrapper";
 
 const main = async () => {
-    const gameBootstrapper = DIContainer.get<GameBootstrapper>(GAME_CONTEXT.GameBootstrapper)
+    const gameBootstrapper = DIContainer.get<GameBootstrapper>(GAME_CONTEXT.CORE.GameBootstrapper)
     await gameBootstrapper.run()
 }
 
