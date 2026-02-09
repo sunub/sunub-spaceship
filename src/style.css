@@ -29,6 +29,9 @@
     --x-large: calc(1rem * pow(var(--scale), 2));
     --xx-large: calc(1rem * pow(var(--scale), 3));
     --xxx-large: calc(1rem * pow(var(--scale), 4));
+
+    --control-group-opacity: 1;
+    --control-group-visibility: visible;
 }
 
 @font-face {
@@ -116,10 +119,14 @@ canvas {
     bottom: 0;
     right: 0;
     padding: 2rem;
-    display: flex;
+    display: none;
     flex-direction: column;
     align-items: center;
     gap: var(--key-gap);
+
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease-in, visibility 0.4s ease-in;
 }
 
 .key-row {
@@ -584,9 +591,8 @@ canvas {
 }
 
 @media screen and (max-width: 768px) {
-    .control-group {
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s;
+    :root {
+        --control-group-opacity: 0;
+        --control-group-visibility: hidden;
     }
 }
