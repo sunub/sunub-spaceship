@@ -1,5 +1,8 @@
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
 import EventEmitter from "./EventEmitter"
-import { injectable } from "inversify"
+import { inject, injectable } from "inversify"
+import type { EventBus } from "@/core/EventBus/EventBus"
+import { GameEvents } from "@/core/EventBus/EventBusType"
 
 @injectable()
 export default class Time extends EventEmitter {
@@ -9,8 +12,11 @@ export default class Time extends EventEmitter {
     delta: number
     private isRunning = false
     private animationId: number | null = null
+    private disposables: Array<() => void> = [];
 
-    constructor() {
+    constructor(
+        @inject(GAME_CONTEXT.CORE.EventBus) private eventBus: EventBus
+    ) {
         super()
 
         this.start = performance.now()
@@ -33,7 +39,9 @@ export default class Time extends EventEmitter {
     }
 
     startGameLoop() {
-        if (this.isRunning) return
+        if (this.isRunning) {
+            return
+        }
 
         this.isRunning = true
         this.animationId = window.requestAnimationFrame(() => {
@@ -50,7 +58,9 @@ export default class Time extends EventEmitter {
     }
 
     tick() {
-        if (!this.isRunning) return
+        if (!this.isRunning) {
+            return
+        }
 
         const currentTime = performance.now()
         const rawDelta = currentTime - this.current
@@ -66,9 +76,27 @@ export default class Time extends EventEmitter {
         })
     }
 
-    reset(currentTime: number) {
+    public setupVisibilityEvents() {
+        const unscribeHidden = this.eventBus.on(GameEvents.GAME_VISIBILITY_HIDDEN, () => {
+            this.stopGameLoop()
+        })
+        const unscribeVisible = this.eventBus.on(GameEvents.GAME_VISIBILITY_VISIBLE, () => {
+            this.startGameLoop()
+        })
+
+        this.disposables.push(unscribeHidden, unscribeVisible)
+    }
+
+    public reset(currentTime: number) {
         this.current = currentTime - 16.67
         this.elapsed = currentTime
         this.delta = 16.67
+    }
+
+    public dispose() {
+        this.disposables.forEach((dispose) => {
+            dispose()
+        })
+        this.disposables = []
     }
 }

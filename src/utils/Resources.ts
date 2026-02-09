@@ -10,7 +10,8 @@ import {
 import { HDRLoader } from "./HDRLoader.js"
 import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes.js"
-import type { Rendering } from "@/widgets/Rendering.js"
+import type { Rendering } from "@/core/Rendering.js"
+import type { IResourceService } from "@/Services/IResouceService.js"
 
 export type LoaderType =
     | "gltfModel"
@@ -28,17 +29,21 @@ export type LoaderType =
 export type Source = [string, LoaderType, string, ((resource: any) => void)?]
 
 @injectable()
-export default class Resources {
+export class Resources implements IResourceService {
     private loaders = new Map<string, any>()
     public items: Record<string, any> = {}
     private static ktx2Loader: KTX2Loader | null = null
 
     constructor(
-        @inject(GAME_CONTEXT.Rendering) private rendering: Rendering,
+        @inject(GAME_CONTEXT.CORE.Rendering) private rendering: Rendering,
     ) {}
 
-    public getItem(name: string) {
-        return this.items[name]
+    public getItem<T = any>(name: string): T {
+        const item = this.items[name];
+        if (!item) {
+            throw new Error(`Resource '${name}' not found.`);
+        }
+        return item as T;
     }
 
     public async load(
