@@ -1,1 +1,0 @@
-export { Birds } from "./Birds"

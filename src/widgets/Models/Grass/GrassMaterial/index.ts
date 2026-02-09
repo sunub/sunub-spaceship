@@ -1,1 +1,0 @@
-export { GrassMaterial } from "./GrassMaterial"

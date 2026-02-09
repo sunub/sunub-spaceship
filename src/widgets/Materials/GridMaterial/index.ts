@@ -1,1 +1,0 @@
-export { GridMaterial } from "./GridMaterial"
