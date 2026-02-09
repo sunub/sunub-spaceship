@@ -1,7 +1,6 @@
 import { EventEmitter } from "node:events"
 import { Vector3 } from "three/webgpu"
 
-import type { Game } from "@/widgets/Game"
 import { Atmosphere } from "./model/Atmosphere"
 import { AtmosphereLand } from "./model/AtmosphereLand/AtmosphereLand"
 import { AtmosphereTreeLights } from "./model/AtmosphereTreeLights"
@@ -10,8 +9,12 @@ import { LoadingAnimation } from "./model/LoadingAnimation"
 import { Planet } from "./model/Planet"
 import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "../DI/DITypes"
-import type { Lighting } from "@/widgets/Lighting"
-import type { GameContext } from "../GameContext"
+import type { Lighting } from "@/core/Lighting"
+import type { ISceneManager } from "@/Services/ISceneManager"
+import type { IResourceService } from "@/Services/IResouceService"
+import type { ResourceModel } from "@/Models"
+import type { EventBus } from "@/core/EventBus/EventBus"
+import { GameEvents } from "@/core/EventBus/EventBusType"
 
 @injectable()
 export class Entry extends EventEmitter {
@@ -21,11 +24,13 @@ export class Entry extends EventEmitter {
     private assetsRemainingLabel!: HTMLParagraphElement | null;
     private assetsLoadedCount!: HTMLParagraphElement | null;
     private loadingText!: HTMLParagraphElement | null;
+    private _sceneObjects: Array<ResourceModel> = []
 
     constructor(
-        @inject(GAME_CONTEXT.Game) private game: Game,
-
-        @inject(GAME_CONTEXT.Lighting) private lighting: Lighting,
+        @inject(GAME_CONTEXT.CORE.Lighting) private lighting: Lighting,
+        @inject(GAME_CONTEXT.MANAGER.SceneManager) private sceneManager: ISceneManager,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService) private resourceService: IResourceService,
+        @inject(GAME_CONTEXT.CORE.EventBus) private eventBus: EventBus,
     ) {
         super()
     }
@@ -35,12 +40,11 @@ export class Entry extends EventEmitter {
         if (button) {
             button.removeAttribute("disabled")
             button.addEventListener("click", async () => {
-                await callback()
                 this.dispose()
+                await callback()
             })
         }
     }
-
 
     public updateProgressUI(current: number, total: number) {
         if (!this.gameLoader) {
@@ -85,30 +89,33 @@ export class Entry extends EventEmitter {
         }
     }
 
-    public async setupEntryScene(context: GameContext) {
+    public async setupEntryScene() {
+        const objects_pos = new Vector3(0, 39.0, 0)
         this.lighting.initialize()
-        const object_initializers_promises = this.sceneObjects.map(
+        this.initializeSceneObjects()
+        this.loadingAnimation = new LoadingAnimation(objects_pos)
+        await this.loadingAnimation.initialize()
+        this.sceneManager.add(this.loadingAnimation.pivotGroup)
+        this.sceneManager.add(this.loadingAnimation.instancedMesh)
+
+        const object_initializers_promises = this._sceneObjects.map(
             async (obj) => {
-                await obj.initialize(context)
-                this.game.addGameObject(obj)
+                await obj.initialize()
             },
         )
         await Promise.all(object_initializers_promises)
     }
 
-    get sceneObjects() {
+    private initializeSceneObjects() {
         const objects_pos = new Vector3(0, 39.0, 0)
         const objects_scale = new Vector3(0.5, 0.5, 0.5)
 
-        this.loadingAnimation = new LoadingAnimation(objects_pos)
-
-        return [
-            this.loadingAnimation,
-            new Planet(objects_pos, objects_scale),
-            new Atmosphere(objects_pos, objects_scale),
-            new AtmosphereLand(objects_pos, objects_scale),
-            new AtmosphereTreeLights(objects_pos, objects_scale),
-            new Background(),
+        this._sceneObjects = [
+            new Planet(this.resourceService, this.sceneManager, objects_pos, objects_scale),
+            new Atmosphere(this.resourceService, this.sceneManager, objects_pos, objects_scale),
+            new AtmosphereLand(this.resourceService, this.sceneManager, objects_pos, objects_scale),
+            new AtmosphereTreeLights(this.resourceService, this.sceneManager, objects_pos, objects_scale),
+            new Background(this.resourceService, this.sceneManager),
         ]
     }
 
@@ -122,18 +129,42 @@ export class Entry extends EventEmitter {
         }
     }
 
+    /**
+     * DOM을 페이드 아웃 후 제거하여 reflow 스파이크를 방지합니다.
+     * GameLoop에 Entry dispose를 알려 LoadingAnimation GPU 업로드를 스킵합니다.
+     */
     public dispose() {
-        const entrySceneDOM = document.querySelector(".entry-screen")
+        // EventBus를 통해 GameLoop에 Entry dispose 알림 (순환 의존 방지)
+        this.eventBus.emit(GameEvents.ENTRY_DISPOSED, undefined)
+
+        const entrySceneDOM = document.querySelector(".entry-screen") as HTMLElement | null
         if (entrySceneDOM) {
-            entrySceneDOM.innerHTML = ""
-            entrySceneDOM.remove()
+            // CSS transition으로 페이드 아웃 후 DOM 제거 (대규모 reflow 분산)
+            entrySceneDOM.style.transition = "opacity 0.3s ease-out"
+            entrySceneDOM.style.opacity = "0"
+            entrySceneDOM.style.pointerEvents = "none"
+            entrySceneDOM.addEventListener("transitionend", () => {
+                entrySceneDOM.remove()
+            }, { once: true })
         }
 
-        const loadingZone = document.querySelector("#loading-zone")
+        const loadingZone = document.querySelector("#loading-zone") as HTMLElement | null
         if (loadingZone) {
-            loadingZone.remove()
+            loadingZone.style.transition = "opacity 0.3s ease-out"
+            loadingZone.style.opacity = "0"
+            loadingZone.style.pointerEvents = "none"
+            loadingZone.addEventListener("transitionend", () => {
+                loadingZone.remove()
+            }, { once: true })
         }
 
         this.removeAllListeners()
+    }
+
+    public update(delta: number) {
+        this._sceneObjects.forEach((obj) => {
+            obj.update(delta)
+        })
+        this.loadingAnimation.update(delta)
     }
 }
