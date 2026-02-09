@@ -6,6 +6,7 @@ import {
     fract,
     max,
     mix,
+    nodeObject,
     normalize,
     normalWorld,
     positionWorld,
@@ -21,21 +22,21 @@ import {
 } from "three/tsl"
 import {
     MeshBasicNodeMaterial,
-    type Node,
-    type UniformNode,
     Vector2,
     Vector3,
+    Node,
 } from "three/webgpu"
+import type { UniformNode } from "three/webgpu"
 
 interface PlanetMaterialProps {
-    uTime?: UniformNode<number>
-    fresnelStrength?: number
+    uTime?: Node | number
+    fresnelStrength?: Node | number
     uColorStop1?: Vector2
     uColorStop2?: Vector2
     uColor1?: Vector3
     uColor2?: Vector3
     uEmissionColor?: Vector3
-    uEmissionStrength?: number
+    uEmissionStrength?: Node | number
     opacityNode?: ShaderNodeObject<Node>
 }
 
@@ -69,16 +70,17 @@ export class PlanetMaterial extends MeshBasicNodeMaterial {
             opacityNode = float(1.0),
         } = props
 
-        this.uTime = uTime as unknown as ShaderNodeObject<UniformNode<number>>
+        // If it's already a node, use nodeObject to wrap it, otherwise create a new uniform
+        this.uTime = (uTime instanceof Node ? nodeObject(uTime) : uniform(uTime)) as any
+        this.fresnelStrength = (fresnelStrength instanceof Node ? nodeObject(fresnelStrength) : uniform(fresnelStrength)) as any
 
         this.uColorStop1 = uniform(uColorStop1)
         this.uColorStop2 = uniform(uColorStop2)
         this.uColor1 = uniform(uColor1)
         this.uColor2 = uniform(uColor2)
         this.uEmissionColor = uniform(uEmissionColor)
-        this.uEmissionStrength = uniform(uEmissionStrength)
-        this.uEmissionStrength = uniform(uEmissionStrength)
-        this.fresnelStrength = uniform(fresnelStrength)
+        this.uEmissionStrength = (uEmissionStrength instanceof Node ? nodeObject(uEmissionStrength) : uniform(uEmissionStrength)) as any
+
         this.opacityNode = opacityNode
 
         this.vUv = varying(uv())

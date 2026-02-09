@@ -11,15 +11,13 @@ import {
     SphereGeometry,
     Vector3,
 } from "three/webgpu"
-import type { GameContext, IGameObject } from "@/core/GameContext"
+import type { IGameObject } from "@/Services/IGameObject"
 import { PlanetMaterial } from "../Planet/PlanetMaterial"
 
 export class LoadingAnimation implements IGameObject {
-    private context!: GameContext
     private geometry!: SphereGeometry
     private sphere!: Mesh
 
-    private instancedMesh!: InstancedMesh
     private maxTrails = 20
     private trailData: {
         position: Vector3
@@ -32,20 +30,20 @@ export class LoadingAnimation implements IGameObject {
     private isLoaded = false
     private rotationTween!: ReturnType<typeof gsap.to>
     private globalOpacity = 1.0
+    private elapsed = 0
+
+    public instancedMesh!: InstancedMesh
+    public pivotGroup = new Group()
 
     constructor(private position: Vector3 = new Vector3(0, 11, 0)) {}
 
-    public async initialize(context: GameContext) {
-        this.context = context
-        const pivotGroup = new Group()
-        this.context.scene.add(pivotGroup)
-
+    public async initialize() {
         this.geometry = new SphereGeometry(0.05, 32, 32)
-        const material = new MeshBasicMaterial({ color: 0x00ff00 })
+        const material = new MeshBasicMaterial({ color: 0x00ff00, transparent: true })
         this.sphere = new Mesh(this.geometry, material)
 
         this.sphere.position.y = 1.5
-        pivotGroup.add(this.sphere)
+        this.pivotGroup.add(this.sphere)
 
         // -- Initialize InstancedMesh for Trails --
 
@@ -77,6 +75,7 @@ export class LoadingAnimation implements IGameObject {
             this.maxTrails,
         )
         this.instancedMesh.instanceMatrix.setUsage(DynamicDrawUsage)
+        this.instancedMesh.frustumCulled = false
 
         // 4. Trail 데이터 초기화
         for (let i = 0; i < this.maxTrails; i++) {
@@ -90,8 +89,7 @@ export class LoadingAnimation implements IGameObject {
             // 초기에는 보이지 않게 크기를 0으로 설정
             this.instancedMesh.setMatrixAt(i, new Matrix4().makeScale(0, 0, 0))
         }
-        this.context.scene.add(this.instancedMesh)
-        this.rotationTween = gsap.to(pivotGroup.rotation, {
+        this.rotationTween = gsap.to(this.pivotGroup.rotation, {
             z: Math.PI * 2 * -1,
             duration: 1.75,
             repeat: -1,
@@ -106,7 +104,7 @@ export class LoadingAnimation implements IGameObject {
             },
         })
 
-        pivotGroup.position.set(
+        this.pivotGroup.position.set(
             this.position.x,
             this.position.y,
             this.position.z,
@@ -131,7 +129,8 @@ export class LoadingAnimation implements IGameObject {
         this.isLoaded = true
     }
 
-    public update(time: number): void {
+    public update(delta: number): void {
+        this.elapsed += delta
         const currentIndex = this.currentTrailIndex % this.maxTrails
         const trail = this.trailData[currentIndex]
 
@@ -142,7 +141,7 @@ export class LoadingAnimation implements IGameObject {
         trail.position.copy(worldPos)
         trail.scale = 1.2
         trail.opacity = 1.0
-        trail.time = time
+        trail.time = this.elapsed
 
         this.currentTrailIndex++
 
@@ -190,7 +189,9 @@ export class LoadingAnimation implements IGameObject {
         this.instancedMesh.instanceMatrix.needsUpdate = true
         opacityAttr.needsUpdate = true
 
-        // 셰이더 시간 업데이트 (필요한 경우 주석 해제)
-        // (this.instancedMesh.material as PlanetMaterial).uTime.value = time
+        // 셰이더 시간 업데이트
+        if (this.instancedMesh.material instanceof PlanetMaterial) {
+            this.instancedMesh.material.uTime.value = this.elapsed
+        }
     }
 }

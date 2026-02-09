@@ -1,22 +1,28 @@
-import type { Object3D } from "three/webgpu"
+import { Object3D } from "three/webgpu"
 import { Color, DoubleSide, Mesh, Vector3 } from "three/webgpu"
-import { BaseModel } from "@/widgets/Models"
+import { ResourceModel } from "@/Models"
 import { AtmosphereMaterial } from "./AtmosphereMaterial"
+import { inject } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { IResourceService } from "@/Services/IResouceService"
+import type { ISceneManager } from "@/Services/ISceneManager"
 
-export class Atmosphere extends BaseModel {
+export class Atmosphere extends ResourceModel {
     private material!: AtmosphereMaterial
-    private scale: Vector3
 
     constructor(
+        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
         position: Vector3 = new Vector3(0, 0, 0),
         scale: Vector3 = new Vector3(1, 1, 1),
     ) {
-        super("atmosphere", position)
-        this.scale = scale
+        super(resourcesManager, sceneManager, "atmosphere", "", position, scale)
     }
 
     protected setupModelStructure(clonedModel: Object3D): void {
-        this.mesh = clonedModel.children[0] as Mesh
+        this.modelGroup = new Object3D()
+        this.modelGroup.name = `${this.modelName}Group`
+        this.mesh = clonedModel
 
         this.mesh.traverse((child) => {
             if (!(child instanceof Mesh)) {
@@ -34,21 +40,18 @@ export class Atmosphere extends BaseModel {
             child.material.side = DoubleSide
         })
 
-        this.mesh.position.copy(this.position)
-        this.mesh.scale.set(this.scale.x, this.scale.y, this.scale.z)
-        this.context?.scene.add(this.mesh)
+        this.modelGroup.add(this.mesh)
     }
 
-    public update() {
-        if (this.mesh) {
-            const elapsedTime = this.context.time.delta * 0.001 // ms to s
-            this.mesh.rotation.y += elapsedTime * 0.05
-            const floatOffset = Math.sin(elapsedTime * 0.2) * 0.2
-            this.mesh.position.y = this.position.y + floatOffset
-
-            // Material uTime 업데이트
+    public update(deltaTime: number): void {
+        if (this.modelGroup) {
+            this.modelGroup.rotation.y += deltaTime * 0.05
             if (this.material) {
-                this.material.uTime.value = elapsedTime
+                this.material.uTime.value += deltaTime
+                const time = this.material.uTime.value
+
+                const floatOffset = Math.sin(time * 0.2) * 0.1
+                this.modelGroup.position.y = this.position.y + floatOffset
             }
         }
     }

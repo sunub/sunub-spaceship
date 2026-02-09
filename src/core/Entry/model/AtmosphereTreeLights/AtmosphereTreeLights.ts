@@ -6,28 +6,32 @@ import {
     type Material,
     type Matrix4,
     type Mesh,
+    MeshStandardNodeMaterial,
     type Texture,
     Vector3,
 } from "three/webgpu"
-import { MeshDefaultMaterial } from "@/widgets/Materials/MeshDefaultMaterial"
-import { BaseModel } from "@/widgets/Models"
+import { ResourceModel } from "@/Models"
+import { inject } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { IResourceService } from "@/Services/IResouceService"
+import type { ISceneManager } from "@/Services/ISceneManager"
 
-export class AtmosphereTreeLights extends BaseModel {
-    private scale: Vector3
-
+export class AtmosphereTreeLights extends ResourceModel {
     constructor(
+        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
         position: Vector3 = new Vector3(0, 0, 0),
         scale: Vector3 = new Vector3(1, 1, 1),
     ) {
-        super("atmosphereTreeLights")
-        this.position = position
-        this.scale = scale
+        super(resourcesManager, sceneManager, "atmosphereTreeLights", "", position, scale)
     }
 
     protected setupModelStructure(clonedModel: Object3D): void {
         this.modelGroup = new Object3D()
         this.modelGroup.name = "AtmosphereTreeLights"
-        this.modelGroup.scale.copy(this.scale)
+        // Scale handled by ResourceModel on modelGroup typically, checking original:
+        // this.modelGroup.scale.copy(this.scale) <- logic from original
+        // ResourceModel loadModel also does this. So redundant but harmless.
 
         clonedModel.updateMatrixWorld(true)
 
@@ -44,7 +48,7 @@ export class AtmosphereTreeLights extends BaseModel {
             }
         >()
 
-        const treeLightTexture = this.context.resources.getItem(
+        const treeLightTexture = this.resourcesManager.getItem(
             "atmosphereTreeLightsTexture",
         ) as Texture
 
@@ -53,11 +57,9 @@ export class AtmosphereTreeLights extends BaseModel {
                 const mesh = child as Mesh
                 const geometry = mesh.geometry
 
-                const newMat = new MeshDefaultMaterial({
+                const newMat = new MeshStandardNodeMaterial({
                     colorNode: texture(treeLightTexture),
-                    emissionNode: texture(treeLightTexture).mul(2.5),
-                    hasCoreShadows: false,
-                    hasLightBounce: false,
+                    emissiveNode: texture(treeLightTexture).mul(2.5),
                 })
 
                 if (!instancesMap.has(geometry.uuid)) {

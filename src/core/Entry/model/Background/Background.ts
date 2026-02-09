@@ -14,7 +14,7 @@ import {
     uv,
     vec2,
     vec4,
-} from "three/tsl" // [중요] 수학 함수들 추가 임포트
+} from "three/tsl"
 import {
     BackSide,
     BoxGeometry,
@@ -24,28 +24,41 @@ import {
     RepeatWrapping,
     type Texture,
     type Vector2,
+    Object3D,
+    Vector3,
 } from "three/webgpu"
-import type { GameContext, IGameObject } from "@/core/GameContext"
+import { ResourceModel } from "@/Models"
+import { inject } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { IResourceService } from "@/Services/IResouceService"
+import type { ISceneManager } from "@/Services/ISceneManager"
 
 const ROTATION_SPEED = 0.01
 
-export class Background implements IGameObject {
+export class Background extends ResourceModel {
     public bloomColor!: UniformNode<Color>
     public bloomIntensity!: UniformNode<number>
     public starsOffset!: UniformNode<Vector2>
     public starTexture!: Texture
-    public mesh!: Mesh
 
-    private context!: GameContext
+    constructor(
+        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
+        position: Vector3 = new Vector3(0, 10, 0),
+    ) {
+        super(resourcesManager, sceneManager, "background", "", position)
+    }
 
-    constructor() {}
-    
-    public async initialize(context: GameContext) {
-        this.context = context
-        this.starTexture = context.resources.items.behindeTheScene
+    // Override loadModel since we don't load a GLTF here
+    protected async loadModel(addToScene: boolean = true): Promise<void> {
+        this.starTexture = this.resourcesManager.getItem("behindeTheScene") as Texture
+        if (!this.starTexture) {
+            console.error("Background texture 'behindeTheScene' not found.")
+            return
+        }
         this.starTexture.wrapS = RepeatWrapping
         this.starTexture.wrapT = RepeatWrapping
-    
+
         this.bloomColor = uniform(color("#050520"))
         this.bloomIntensity = uniform(0.25)
         this.starsOffset = uniform(vec2(0))
@@ -91,16 +104,39 @@ export class Background implements IGameObject {
         })()
 
         this.mesh = new Mesh(geometry, material)
-        this.mesh.position.set(0, 10, 0)
-        this.context.scene.add(this.mesh)
+
+        // Setup modelGroup structure expected by ResourceModel
+        this.modelGroup = new Object3D()
+        this.modelGroup.name = `${this.modelName}Group`
+        this.modelGroup.add(this.mesh)
+
+        this.modelGroup.position.copy(this.position)
+
+        if (addToScene) {
+            this.sceneManager.add(this.modelGroup)
+        }
     }
 
-    public update() {
-        const deltaSeconds = this.context.time.delta * 0.001
-        this.mesh.rotation.y += deltaSeconds * ROTATION_SPEED
+    protected setupModelStructure(): void {
+        console.warn("Background setupModelStructure should not be called")
     }
 
-    public dispose() {
-        this.context.scene.remove(this.mesh)
+    public update(deltaTime: number): void {
+        if (this.mesh) {
+            const deltaSeconds = deltaTime * 0.001
+            this.mesh.rotation.y += deltaSeconds * ROTATION_SPEED
+        }
+    }
+
+    public dispose(): void {
+        super.dispose()
+        if (this.mesh instanceof Mesh) {
+            this.mesh.geometry.dispose()
+            if (Array.isArray(this.mesh.material)) {
+                this.mesh.material.forEach(m => m.dispose())
+            } else {
+                this.mesh.material.dispose()
+            }
+        }
     }
 }

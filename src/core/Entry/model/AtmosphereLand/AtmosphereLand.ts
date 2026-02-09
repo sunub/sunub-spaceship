@@ -1,25 +1,32 @@
-import type { Object3D } from "three"
+import { Object3D } from "three"
 import { Color, Mesh, Vector3 } from "three/webgpu"
-import { BaseModel } from "@/widgets/Models"
+import { ResourceModel } from "@/Models"
 import { AtmosphereMaterial } from "../Atmosphere/AtmosphereMaterial"
+import { inject } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { IResourceService } from "@/Services/IResouceService"
+import type { ISceneManager } from "@/Services/ISceneManager"
 
-export class AtmosphereLand extends BaseModel {
+export class AtmosphereLand extends ResourceModel {
     private material!: AtmosphereMaterial
-    private scale: Vector3
 
     constructor(
+        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
         position: Vector3 = new Vector3(0, 0, 0),
         scale: Vector3 = new Vector3(1, 1, 1),
     ) {
-        super("atmosphereLand")
-        this.position = position
-        this.scale = scale
+        super(resourcesManager, sceneManager, "atmosphereLand", "", position, scale)
     }
 
     protected setupModelStructure(clonedModel: Object3D): void {
-        const mesh = clonedModel.children[0] as Mesh
+        this.modelGroup = new Object3D()
+    this.modelGroup.name = `${this.modelName}Group`
 
-        mesh.traverse((child) => {
+        const mesh = clonedModel.children[0] as Mesh
+        this.mesh = mesh
+
+        this.mesh.traverse((child) => {
             if (!(child instanceof Mesh)) {
                 return
             }
@@ -35,12 +42,12 @@ export class AtmosphereLand extends BaseModel {
             child.material = this.material
         })
 
-        mesh.position.copy(this.position)
-        mesh.scale.set(this.scale.x, this.scale.y, this.scale.z)
-        this.context?.scene.add(mesh)
+        this.modelGroup.add(this.mesh)
     }
 
-    public update(): void {
-        this.material.uTime.value += this.context.time.delta * 0.001
+    public update(deltaTime: number): void {
+        if (this.material) {
+            this.material.uTime.value += deltaTime
+        }
     }
 }
