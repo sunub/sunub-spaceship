@@ -6,7 +6,7 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>sun_ub's</title>
-  
+
   <link rel="stylesheet" href="./src/style.css" />
   <link rel="stylesheet" href="./src/title.css" />
   <link rel="stylesheet" href="./src/button.css" />
@@ -20,7 +20,8 @@
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=rocket_launch" />
   <link rel="preload" fetchpriority="high" as="font" type="font/woff2" crossorigin
     href="/fonts/Pretendard-Regular.subset.woff2" />
-  <link rel="preload" fetchpriority="high" as="font" type="font/woff2" crossorigin href="/fonts/cinzel-variable.woff2" />
+  <link rel="preload" fetchpriority="high" as="font" type="font/woff2" crossorigin
+    href="/fonts/cinzel-variable.woff2" />
 
 </head>
 
@@ -74,6 +75,71 @@
     </div>
 
   </div>
+
+  <div class="audio-panel">
+    <button class="panel-toggle-btn" id="audio-panel-toggle">
+      <span class="material-symbols-outlined" id="toggle-icon">graphic_eq</span>
+    </button>
+
+    <div class="panel-content folded">
+      <button class="mute-btn">
+        <span class="material-symbols-outlined">volume_up</span>
+      </button>
+
+      <div class="slider-wrapper">
+        <div class="wave-origin" id="wave-origin" style="display: none;"></div>
+        <input type="range" class="volume-input" min="0" max="100" value="70">
+      </div>
+    </div>
+  </div>
+
+  <div class="audio-status-display">
+    <div class="status-labels">
+      <span class="label-text">SOUND</span>
+      <span class="status-vol-text">70%</span>
+    </div>
+    <div class="status-bar-bg">
+      <div class="status-bar-fill" style="width: 70%;"></div>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <div id="key-w" class="control-key dark">W</div>
+    <div class="key-row">
+      <div id="key-a" class="control-key">A</div>
+      <div id="key-s" class="control-key">S</div>
+      <div id="key-d" class="control-key">D</div>
+    </div>
+  </div>
+
+  <div class="notification-overlay hidden">
+    <div class="toast-wrapper" role="alert" aria-live="assertive">
+      <div class="toast-glow"></div>
+      <div class="toast-container organic-shape">
+        <div class="toast-overlay-gradient"></div>
+        <div class="toast-overlay-texture"></div>
+
+        <div class="toast-icon-wrapper">
+          <div class="icon-glow"></div>
+          <span class="material-symbols-outlined toast-icon">explore</span>
+        </div>
+
+        <div class="toast-content">
+          <div class="toast-header">
+            <span class="toast-label">System Alert</span>
+            <div class="toast-separator"></div>
+          </div>
+          <p class="toast-message"></p>
+        </div>
+
+        <button type="button" class="toast-close-btn" aria-label="Dismiss">
+          <div class="ember-dot"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <main id="project-terminal" class="main-content hidden"></main>
   <script type="module" src="/src/main.ts"></script>
 </body>
 
