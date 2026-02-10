@@ -56,10 +56,20 @@
     box-sizing: border-box;
 }
 
+html {
+    height: 100%;
+    overflow: hidden;
+}
+
 body {
     margin: 0;
     width: 100%;
-    min-height: 100vh;
+    height: 100dvh;
+    height: 100vh; /* fallback for older browsers */
+    height: 100dvh;
+    position: fixed;
+    top: 0;
+    left: 0;
     background-color: var(--col-bg-body);
     color: var(--col-text-main);
     font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -72,6 +82,9 @@ body {
 
     font-family: "Pretendard", "Cinzel", sans-serif;
     overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: none;
+    touch-action: none;
 }
 
 canvas {
@@ -107,15 +120,17 @@ canvas {
     flex-direction: column;
     justify-content: space-around;
     align-items: center;
-    gap: 10rem;
+    gap: clamp(2rem, 15vh, 10rem);
 
     padding: 1rem;
+    overflow: hidden;
+    overscroll-behavior: none;
     transition: opacity 0.5s ease-out;
     user-select: none;
 }
 
 .control-group {
-    position: absolute;
+    position: fixed;
     bottom: 0;
     right: 0;
     padding: 2rem;
@@ -127,6 +142,8 @@ canvas {
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.4s ease-in, visibility 0.4s ease-in;
+    z-index: 100;
+    pointer-events: none;
 }
 
 .key-row {
