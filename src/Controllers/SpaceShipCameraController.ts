@@ -50,7 +50,7 @@ export class SpaceShipCameraController {
 
             this.camera.setFollowTargetObject(this._target, this._offset, this._lerpSpeed);
             this.camera.mode = 'follow';
-            
+
             if ( this.camera.orbitControls ) {
 
                 this.camera.orbitControls.enabled = false;

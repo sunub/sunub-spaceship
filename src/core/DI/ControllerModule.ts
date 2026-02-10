@@ -1,11 +1,11 @@
 import { ContainerModule } from "inversify";
 import { GAME_CONTEXT } from "./DITypes";
-import { JoyStick } from "@/controllers/JoyStick";
-import { SpaceShipCameraController } from "@/controllers/SpaceShipCameraController";
-import { SpaceShipAudioController } from "@/controllers/SpaceShipAudioController";
-import { SpaceShipInputHandler } from "@/controllers/SpaceShipInputHandler";
-import { SpaceShipAnimator } from "@/controllers/SpaceShipAnimator";
-import { SpaceShipDebugger } from "@/controllers/SpaceShipDebugger";
+import { JoyStick } from "@/Controllers/JoyStick";
+import { SpaceShipCameraController } from "@/Controllers/SpaceShipCameraController";
+import { SpaceShipAudioController } from "@/Controllers/SpaceShipAudioController";
+import { SpaceShipInputHandler } from "@/Controllers/SpaceShipInputHandler";
+import { SpaceShipAnimator } from "@/Controllers/SpaceShipAnimator";
+import { SpaceShipDebugger } from "@/Controllers/SpaceShipDebugger";
 
 export const ControllerModule = new ContainerModule((options) => {
   options.bind<JoyStick>(GAME_CONTEXT.CONTROLLER.JoyStick).to(JoyStick).inTransientScope();

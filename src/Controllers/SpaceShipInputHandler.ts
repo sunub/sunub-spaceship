@@ -2,7 +2,7 @@ import { inject, injectable } from "inversify";
 import { Object3D, Vector2, Vector3 } from "three/webgpu";
 import { GAME_CONTEXT } from "@/core/DI/DITypes";
 import type { InputManager } from "@/Inputs/InputManager";
-import type { JoyStick } from "@/controllers/JoyStick";
+import type { JoyStick } from "./JoyStick";
 import type { ISceneManager } from "@/Services/ISceneManager";
 
 export interface SpaceShipControlState {

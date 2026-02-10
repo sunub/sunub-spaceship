@@ -10,7 +10,7 @@ import type { InputManager } from "@/Inputs/InputManager";
 import type { InputIndicator } from "../UI/InputIndicator";
 import type { Notification } from "../UI/Notification";
 import type { TerminalOverlay } from "../UI/TerminalOverlay";
-import type { SpaceShipCameraController } from "../controllers/SpaceShipCameraController";
+import type { SpaceShipCameraController } from "../Controllers/SpaceShipCameraController";
 import type { Audio } from "../Environment/Audio";
 import type Time from "@/utils/Time";
 

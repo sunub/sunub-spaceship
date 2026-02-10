@@ -9,7 +9,7 @@ import {
     Vector3,
 } from "three/webgpu";
 import { inject, injectable } from "inversify";
-import { FlightController } from "@/controllers/FlightController";
+import { FlightController } from "@/Controllers/FlightController";
 import { ResourceModel } from "../../ResourceModel";
 import { SpaceShipPositionDebugModule } from "../debug/SpaceShip.PositionDebug";
 import { SpaceShipVisualDebugModule } from "../debug/SpaceShip.VisualDebug";
@@ -23,11 +23,11 @@ import type Time from "@/utils/Time";
 import type { EventBus } from "@/core/EventBus/EventBus";
 import { GameEvents } from "@/core/EventBus/EventBusType";
 import { EngineFlameFX } from "./EngineFlameFX";
-import { SpaceShipCameraController } from "@/controllers/SpaceShipCameraController";
-import { SpaceShipAudioController } from "@/controllers/SpaceShipAudioController";
-import { SpaceShipInputHandler } from "@/controllers/SpaceShipInputHandler";
-import { SpaceShipAnimator } from "@/controllers/SpaceShipAnimator";
-import { SpaceShipDebugger } from "@/controllers/SpaceShipDebugger";
+import { SpaceShipCameraController } from "@/Controllers/SpaceShipCameraController";
+import { SpaceShipAudioController } from "@/Controllers/SpaceShipAudioController";
+import { SpaceShipInputHandler } from "@/Controllers/SpaceShipInputHandler";
+import { SpaceShipAnimator } from "@/Controllers/SpaceShipAnimator";
+import { SpaceShipDebugger } from "@/Controllers/SpaceShipDebugger";
 
 @injectable()
 export class SpaceShip extends ResourceModel {
