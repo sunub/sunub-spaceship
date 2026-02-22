@@ -7,6 +7,7 @@ import {
     Object3D,
     Sphere,
     Vector3,
+    Box3,
 } from "three/webgpu"
 import { TweakPane } from "@/Debug/TweakPane"
 import { ResourceModel } from "../ResourceModel"
@@ -17,6 +18,7 @@ import { GAME_CONTEXT } from "@/core/DI/DITypes"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
 import type { TerrainVisibilityArea } from "@/Services/TerrainVisibilityArea"
+import type { Rendering } from "@/core/Rendering"
 
 export interface GrassOptions extends GrassMaterialOptions {
     count?: number
@@ -27,6 +29,7 @@ export interface GrassOptions extends GrassMaterialOptions {
 export class Grass extends ResourceModel {
     public grassMaterial: GrassMaterial | null = null
     private grassMeshes: Mesh[] = []
+    private surfaceArea: number = 0
 
     public params: Required<GrassOptions> = {
         width: 0.15,
@@ -44,6 +47,7 @@ export class Grass extends ResourceModel {
         @inject(GAME_CONTEXT.SERVICE.ResourceService) resoucesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
         @inject(GAME_CONTEXT.SERVICE.TerrainVisibilityArea) private terrainVisibilityArea: TerrainVisibilityArea,
+        @inject(GAME_CONTEXT.CORE.Rendering) private rendering: Rendering,
         @unmanaged() options: GrassOptions = {},
     ) {
         super(resoucesManager, sceneManager, "grassModel", "")
@@ -71,6 +75,14 @@ export class Grass extends ResourceModel {
             console.error("Grass: No mesh found in grassModel for placement.")
             return
         }
+
+        // Calculate Surface Area (Approximate XZ Plane)
+        const box = new Box3().setFromObject(surfaceMesh)
+        const size = new Vector3()
+        box.getSize(size)
+        const width = size.x || 1
+        const depth = size.z || 1
+        this.surfaceArea = width * depth
 
         this.initGrass(surfaceMesh)
     }
@@ -225,6 +237,10 @@ export class Grass extends ResourceModel {
             readonly: true,
             label: "Chunk Size",
         })
+
+        folder.addButton({ title: "📊 Log Perf Stats" }).on("click", () => {
+            this.logOptimizationStats()
+        })
     }
 
     updateParams(params: Partial<GrassOptions>) {
@@ -237,5 +253,89 @@ export class Grass extends ResourceModel {
                 this.params.height,
             )
         }
+    }
+
+    private logOptimizationStats() {
+        if (!this.rendering) {
+            console.warn("Grass: Rendering service not injected.")
+            return
+        }
+        
+        // WebGPURenderer might be initialized asynchronously or available directly
+        const renderer = this.rendering.renderer
+        if (!renderer) {
+             console.warn("Grass: Renderer instance is null. Is the game strictly initialized?")
+             return
+        }
+
+        const info = renderer.info
+        const ship = this.sceneManager.getObjectByName("ShipPivot")
+        const playerDistText = ship
+            ? ` (${this.terrainVisibilityArea.center.distanceTo(ship.position).toFixed(1)}m)`
+            : ""
+
+        // --- Quantitative Analysis Logic ---
+        const totalCount = this.params.count
+        const visibleRadius = this.terrainVisibilityArea.radius
+        
+        // 1. Calculate Density (Instances per unit area)
+        // If surfaceArea is 0 (fallback), avoid division by zero
+        const area = this.surfaceArea > 0 ? this.surfaceArea : 10000 // Default fallback area
+        const density = totalCount / area
+        
+        // 2. Calculate Visible Area (Circle area: pi * r^2)
+        const visibleArea = Math.PI * Math.pow(visibleRadius, 2)
+        
+        // 3. Estimated Active Objects
+        // If visible area > total area, we clamp to total count
+        const estimatedActiveCount = Math.min(Math.floor(density * visibleArea), totalCount)
+        
+        // 4. Reduction Ratio
+        const reductionRatio = ((1 - estimatedActiveCount / totalCount) * 100).toFixed(1)
+
+        console.group(
+            "%c 🚀 [Optimization Check] Grass Performance",
+            "color: #76ff03; font-weight: bold; font-size: 14px; background: #222; padding: 4px; border-radius: 4px;",
+        )
+
+        console.log(
+            `%c 1️⃣ Total Instances (Hardcoded): %c${totalCount.toLocaleString()}`,
+            "font-weight:bold; color: #ddd",
+            "color: #00e676; font-weight: bold",
+        )
+        
+        console.log(
+            `%c 2️⃣ Distribution & Culling Metrics:`,
+            "font-weight:bold; color: #29b6f6",
+        )
+        console.log(`   - Total Mesh Area: ${area.toFixed(0)} m²`)
+        console.log(`   - Instance Density: ${density.toFixed(2)} per m²`)
+        console.log(`   - Current Visible Radius: ${visibleRadius.toFixed(2)}m${playerDistText}`)
+        console.log(`   - Visible Area: ${visibleArea.toFixed(0)} m²`)
+        
+        console.log(
+            `%c 3️⃣ Estimated Active Objects (GPU Processed): %c${estimatedActiveCount.toLocaleString()}`,
+            "font-weight:bold; color: #ddd",
+            "color: #ff9100; font-weight: bold; font-size: 12px",
+        )
+        console.log(
+            `%c    -> Culling Efficiency: %c${reductionRatio}% Reduced`,
+            "color: #aaa",
+            "color: #00bcd4; font-weight: bold",
+        )
+
+        console.log(
+            `%c 4️⃣ Draw Calls (Global): %c${info.render.calls || (info.render as any).drawCalls || 0}`,
+            "font-weight:bold; color: #ddd",
+            "color: #ffca28; font-weight: bold",
+        )
+        
+        console.log(
+            `%c 5️⃣ Active Triangles (Scene): %c${info.render.triangles.toLocaleString()}`,
+            "font-weight:bold; color: #ddd",
+            "color: #ffca28; font-weight: bold",
+        )
+
+        console.groupEnd()
     }
 }

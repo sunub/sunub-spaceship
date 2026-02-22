@@ -247,7 +247,9 @@ export class Rendering {
     public resize(resizeEvent: ResizeEvent) {
         this.renderer.setSize(resizeEvent.width, resizeEvent.height)
         this.renderer.setPixelRatio(resizeEvent.pixelRatio)
-        this.setPostProcessing()
+        if (this.camera) {
+            this.setPostProcessing()
+        }
     }
 
     public dispose() {

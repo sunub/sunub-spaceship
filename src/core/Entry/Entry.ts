@@ -25,6 +25,8 @@ export class Entry extends EventEmitter {
     private assetsLoadedCount!: HTMLParagraphElement | null;
     private loadingText!: HTMLParagraphElement | null;
     private _sceneObjects: Array<ResourceModel> = []
+    private pendingProgress: { current: number; total: number } | null = null
+    private progressUpdateQueued = false
 
     constructor(
         @inject(GAME_CONTEXT.CORE.Lighting) private lighting: Lighting,
@@ -47,6 +49,15 @@ export class Entry extends EventEmitter {
     }
 
     public updateProgressUI(current: number, total: number) {
+        this.pendingProgress = { current, total }
+        if (this.progressUpdateQueued) {
+            return
+        }
+        this.progressUpdateQueued = true
+        requestAnimationFrame(() => this.flushProgressUI())
+    }
+
+    private flushProgressUI() {
         if (!this.gameLoader) {
             this.gameLoader = document.getElementById("game-loader") as HTMLProgressElement
         }
@@ -62,6 +73,10 @@ export class Entry extends EventEmitter {
         if (!this.loadingText) {
             this.loadingText = document.getElementById("loading-txt") as HTMLParagraphElement
         }
+
+        const { current, total } = this.pendingProgress ?? { current: 0, total: 0 }
+        this.progressUpdateQueued = false
+        this.pendingProgress = null
 
         const percent = Math.floor((current / total) * 100)
         if (this.gameLoader) {

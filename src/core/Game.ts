@@ -62,9 +62,13 @@ export class Game {
     /**
      * Phase 3a: 월드 오브젝트와 SpaceShip을 생성하고 초기화합니다.
      */
-    public async prepareGameObjects(): Promise<void> {
-        await this.worldManager.prepareGameObjects();
-        await this.projectManager.initialize();
+    public async prepareGameObjects(
+        options?: { skipTerrainInitialization?: boolean },
+    ): Promise<void> {
+        await Promise.all([
+            this.worldManager.prepareGameObjects(options),
+            this.projectManager.initialize(),
+        ]);
 
         const spaceShip = this.spaceShipFactory();
         await spaceShip.initialize();

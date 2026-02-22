@@ -15,12 +15,15 @@ import type { EventBus } from "@/core/EventBus/EventBus"
 import { GameEvents } from "@/core/EventBus/EventBusType"
 import type { TerrainVisibilityArea } from "@/Services/TerrainVisibilityArea"
 
+export type GameLoopMode = "entry" | "full"
+
 @injectable()
 export class GameLoop {
     private isRunning = false
     private isRendering = false
     private shouldResetTime = false
     private entryDisposed = false
+    private mode: GameLoopMode = "entry"
 
     constructor(
         @inject(GAME_CONTEXT.UTILITY.Time) private time: Time,
@@ -44,13 +47,18 @@ export class GameLoop {
         })
     }
 
-    public start() {
+    public start(mode: GameLoopMode = "entry") {
         if (this.isRunning) {
             return
         }
         this.isRunning = true
+        this.mode = mode
         this.terrainVisibilityArea.initialize()
         this.rendering.renderer.setAnimationLoop(this.loop.bind(this))
+    }
+
+    public setMode(mode: GameLoopMode) {
+        this.mode = mode
     }
 
     public stop() {
@@ -89,12 +97,13 @@ export class GameLoop {
 
         // Delta limiting (Max 20FPS)
         const deltaTime = Math.min(this.time.delta * 0.001, 0.05)
+        const isFullMode = this.mode === "full"
 
         try {
             this.lighting.update()
 
             // Physics Phase: 전환 중이 아닐 때만 전체 물리 스텝 실행
-            if (!this.camera.isTransitioning) {
+            if (isFullMode && !this.camera.isTransitioning) {
                 this.worldManager.updatePhysics(deltaTime)
                 this.physics.step(deltaTime)
             }
@@ -104,12 +113,16 @@ export class GameLoop {
                 this.entry.update(deltaTime)
             }
 
-            // Visibility Phase: 카메라 기반 가시 영역 계산 (Grass 등 최적화에 사용)
-            this.terrainVisibilityArea.update(deltaTime)
+            // Visibility Phase: 엔트리 단계에서는 비활성화하여 로딩 중 메인 스레드 경합 제거
+            if (isFullMode) {
+                this.terrainVisibilityArea.update(deltaTime)
+            }
 
             // Logic & Visual Phase: Sync visuals to physics bodies, animate, etc.
-            this.worldManager.update(deltaTime)
-            this.projectManager.update(deltaTime)
+            if (isFullMode) {
+                this.worldManager.update(deltaTime)
+                this.projectManager.update(deltaTime)
+            }
 
             // Camera Phase: 전환 보간을 GameLoop 틱에서 직접 수행 (GSAP rAF 이중 실행 제거)
             if (this.camera.isTransitioning) {
@@ -118,7 +131,9 @@ export class GameLoop {
                 this.camera.update()
             }
 
-            this.physics.update() // Update Debug Visuals
+            if (isFullMode) {
+                this.physics.update() // Update Debug Visuals
+            }
             await this.rendering.update()
 
             if (this.cssRenderer && this.scene && this.camera.instance) {

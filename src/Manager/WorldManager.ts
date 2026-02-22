@@ -9,6 +9,7 @@ import type { GrassOptions } from "@/Models/Grass/Grass";
 export class WorldManager {
   private worldObjects: (Mesh | IGameObject | Object3D)[] = [];
   public terrain!: Floor;
+  private isTerrainInitialized = false
 
   constructor(
     @inject(GAME_CONTEXT.FACTORY.TreeLights) treeLightsFactory: () => TreeLights,
@@ -40,11 +41,40 @@ export class WorldManager {
     ];
   }
 
-  public async prepareGameObjects() {
+  public async prepareTerrain(): Promise<Floor> {
+    if (!this.terrain) {
+      const terrainObject = this.worldObjects.find(
+        (obj) => obj instanceof Floor,
+      )
+      if (!terrainObject) {
+        throw new Error("WorldManager: Floor object not found.")
+      }
+
+      this.terrain = terrainObject
+    }
+
+    if (!this.isTerrainInitialized) {
+      await this.terrain.initialize()
+      this.isTerrainInitialized = true
+    }
+
+    return this.terrain
+  }
+
+  public async prepareGameObjects(options?: {
+    skipTerrainInitialization?: boolean
+  }) {
+    const { skipTerrainInitialization = false } = options ?? {}
+
     const sceneObjectsPromises = this.worldObjects.map(async (obj) => {
       if (obj instanceof Floor) {
         this.terrain = obj
+
+        if (skipTerrainInitialization && this.isTerrainInitialized) {
+          return
+        }
         await obj.initialize()
+        this.isTerrainInitialized = true
       } else if (obj instanceof ResourceModel) {
         await obj.initialize()
       }
