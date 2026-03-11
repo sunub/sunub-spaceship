@@ -7,8 +7,9 @@ const GRAVITY = { x: 0.0, y: -9.81, z: 0.0 }
 @injectable()
 export class Physics {
     world!: RAPIER.World
-    private debug!: PhysicsDebug
+    private debug: PhysicsDebug | null = null
     private isInitialized = false
+    private debugEnabled = false
 
     public rapier!: typeof RAPIER | null
 
@@ -22,7 +23,11 @@ export class Physics {
         }
 
         this.world = new this.rapier.World(GRAVITY)
-        this.debug = new PhysicsDebug(this.world)
+        const debugParam = new URLSearchParams(window.location.search).get("debug")
+        this.debugEnabled = debugParam === "physics"
+        if (this.debugEnabled) {
+            this.debug = new PhysicsDebug(this.world)
+        }
         this.isInitialized = true
         // 디버깅 기능
         // context.scene.add(this.debug.lineSegments)
@@ -38,7 +43,7 @@ export class Physics {
     }
 
     update(): void {
-        if (this.isInitialized) {
+        if (this.isInitialized && this.debugEnabled && this.debug) {
             this.debug.update()
         }
     }

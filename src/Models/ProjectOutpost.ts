@@ -33,6 +33,7 @@ export class ProjectOutpost implements IGameObject {
     private trigger!: TriggerRegion
     private hud!: ProjectHUD
     private mesh: Group = new Group()
+    private isAttachedToScene: boolean = false
 
     private floorPlane!: Mesh
     private idleBorderMesh!: Mesh
@@ -134,7 +135,7 @@ export class ProjectOutpost implements IGameObject {
         console.log(`[ProjectOutpost] Initializing: ${this.projectData.title}`)
 
         if (addToScene) {
-            this.sceneManager.add(this.mesh)
+            this.attachToScene()
         }
 
         await this.trigger.initialize(this.audio, this.physicsService, this.sceneManager)
@@ -160,6 +161,19 @@ export class ProjectOutpost implements IGameObject {
                 project: this.projectData,
             })
         })
+    }
+
+    public attachToScene(): void {
+        if (this.isAttachedToScene) {
+            return
+        }
+
+        this.sceneManager.add(this.mesh)
+        this.isAttachedToScene = true
+    }
+
+    public setVisible(visible: boolean): void {
+        this.mesh.visible = visible
     }
 
     private startIdleAnimation(uIntensity: any, uOpacity: any) {

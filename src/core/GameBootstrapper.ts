@@ -14,7 +14,6 @@ import type { Audio } from "@/Environment/Audio";
 import type { GameLoop } from "@/Services/GameLoop";
 import type { EnvironmentManager } from "@/Manager/EnvironmentManager";
 import type { WorldManager } from "@/Manager/WorldManager";
-import { PerformanceTracker } from "@/utils/PerformanceTracker";
 import type { Source } from "@/utils/Resources";
 
 @injectable()
@@ -35,65 +34,61 @@ export class GameBootstrapper {
         private environmentManager: EnvironmentManager,
         @inject(GAME_CONTEXT.MANAGER.WorldManager)
         private worldManager: WorldManager,
-    ) {}
+    ) { }
 
     public async run() {
-        PerformanceTracker.clear();
         console.log("🚀 System Booting...");
         this.resourceService.items = {};
 
         // Phase 1: 필수 시스템 초기화
-        PerformanceTracker.startPhase("Boot");
         await this.rendering.setRenderer(this.domManager.canvas);
         await this.camera.initialize();
         this.rendering.setCamera(this.camera);
         this.lighting.initialize();
-        PerformanceTracker.endPhase("Boot");
         this.audio.initCriticalAudio();
 
-        // 기존 벤치마크/모드 토글 로직을 제거하고 single-process 고정 경로로 로드합니다.
         await this.runSingleProcessMode();
-
-        PerformanceTracker.startPhase("PostProcessing");
-        this.rendering.setPostProcessing();
-        PerformanceTracker.endPhase("PostProcessing");
 
         // MeshDefaultMaterial는 Floor(terrain) + Fog가 모두 준비되어 있어야 생성 가능합니다.
         // Terrain은 WorldManager에서 먼저 한 번만 초기화한 뒤, 나머지 오브젝트를 생성합니다.
-        PerformanceTracker.startPhase("Material Context");
         this.environmentManager.setup();
         await this.worldManager.prepareTerrain();
+        this.worldManager.attachPreparedObjects();
+        this.worldManager.setWorldVisibility(false);
         MeshDefaultMaterial.setup({
             lighting: this.lighting,
             terrian: this.worldManager.terrain,
             fog: this.environmentManager.fog,
         });
-        PerformanceTracker.endPhase("Material Context");
 
         // Phase 3: 게임 오브젝트 생성 및 환경 설정
-        PerformanceTracker.startPhase("GameObject Setup");
-        await this.game.prepareGameObjects({ skipTerrainInitialization: true });
+        await this.game.prepareGameObjects({
+            skipTerrainInitialization: true,
+            stageSceneObjects: true,
+        });
         this.game.setupEnvironment();
-        PerformanceTracker.endPhase("GameObject Setup");
-
-        // 성능 리포트 출력 (모든 리소스 로딩 완료 후)
-        PerformanceTracker.printReport();
 
         // Phase 4: 시작 버튼 활성화 → 클릭 시 게임 시작
         this.entry.enableStartButton(async () => {
-            this.gameLoop.setMode("full");
+            this.entry.showPreparingLaunchState();
+            this.gameLoop.setMode("transition");
 
             // 버튼 효과음은 즉시 재생 (이미 초기화 완료)
             this.audio.play("button");
-            this.audio.initNonCriticalAudio();
+
+            this.game.revealPreparedGameObjects();
+            await this.waitForNextFrames(2)
+            this.entry.dispose()
 
             // 카메라 전환 우선 실행 (프레임 확보가 최우선)
             await this.game.startGame();
+            this.gameLoop.setMode("full");
 
             // 전환 완료 후 DOM 조작/이벤트 리스너 등록 수행
             // requestAnimationFrame으로 다음 렌더 프레임에 UI를 표시하여
             // 카메라 전환 이후 확실한 타이밍에 실행합니다.
-            requestAnimationFrame(() => {
+            this.scheduleNonCriticalStartup(() => {
+                this.audio.initNonCriticalAudio();
                 this.audio.showDisplay();
                 this.audio.showPanel();
                 this.audio.handleSoundControl();
@@ -103,25 +98,30 @@ export class GameBootstrapper {
 
     private async runSingleProcessMode() {
         const allSources = this.getAllSources();
-        const totalResources = allSources.length;
+        const entrySources = this.getEntrySources();
+
+        const totalResources = allSources.length + entrySources.length;
+
         const progress = this.createProgressTracker(totalResources);
-        const handleProgress = (
-            loadedCount: number,
-            _totalCount: number,
-            _info: unknown,
-        ) => {
-            progress.update(loadedCount);
-        };
+        const createPhaseProgressHandler = (offset: number) => {
+            return (loadCount: number) => {
+                progress.update(offset + loadCount);
+            }
+        }
 
-        PerformanceTracker.startPhase("SingleProcess Load");
-        const rapierModulePromise = import("@dimforge/rapier3d-compat");
-
-        await this.resourceService.load(allSources, handleProgress, {
-            resourcePhase: "SingleProcess Load",
+        await this.resourceService.load(entrySources, (loadedCount) => createPhaseProgressHandler(0)(loadedCount), {
+            resourcePhase: "Entry Load",
         });
         await this.entry.setupEntryScene();
+        this.rendering.setPostProcessing();
+        await this.rendering.preparePresentation();
         this.gameLoop.start("entry");
-        PerformanceTracker.endPhase("SingleProcess Load");
+
+        const rapierModulePromise = import("@dimforge/rapier3d-compat");
+        await this.resourceService.load(allSources, (loadedCount) => createPhaseProgressHandler(entrySources.length)(loadedCount), {
+            resourcePhase: "SingleProcess Load",
+        });
+
 
         const rapierModule = await rapierModulePromise;
         await this.initializePhysics(rapierModule);
@@ -141,15 +141,35 @@ export class GameBootstrapper {
     }
 
     private async initializePhysics(rapierModule: any) {
-        PerformanceTracker.startPhase("Rapier Init");
         await rapierModule.init();
 
         this.physics.setupRapier(rapierModule);
         await this.physics.initialize();
-        PerformanceTracker.endPhase("Rapier Init");
+    }
+
+    private getEntrySources(): Source[] {
+        return entrySources;
     }
 
     private getAllSources(): Source[] {
-        return [...entrySources, ...modelSources, ...textureSources];
+        return [...modelSources, ...textureSources];
+    }
+
+    private async waitForNextFrames(frameCount: number = 1): Promise<void> {
+        for (let i = 0; i < frameCount; i++) {
+            await new Promise<void>((resolve) => {
+                requestAnimationFrame(() => resolve())
+            })
+        }
+    }
+
+    private scheduleNonCriticalStartup(callback: () => void): void {
+        const idleCallback = window.requestIdleCallback
+        if (typeof idleCallback === "function") {
+            idleCallback(() => callback(), { timeout: 500 })
+            return
+        }
+
+        requestAnimationFrame(() => callback())
     }
 }

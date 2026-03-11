@@ -208,6 +208,12 @@ export default function grassVertex(
             vec4(grassOffset, 1.0),
         ).xyz
         const hashVal = hash(grassBladeWorldPos)
+        const cameraDistToBlade = distance(cameraPosition, grassBladeWorldPos)
+        const stabilizeFactor = smoothstep(
+            float(35.0),
+            float(120.0),
+            cameraDistToBlade,
+        )
 
         const grassType = float(
             select(saturateValue(hashVal.z).greaterThan(0.75), 1.0, 0.0),
@@ -248,8 +254,9 @@ export default function grassVertex(
 
         // --- Distance-based fade (computed early using instance world position) ---
         const distFromCenter = distance(grassBladeWorldPos, uCenter)
-        const fadeStart = mul(uVisibleRadius, 0.9)
-        const fadeFactor = smoothstep(fadeStart, uVisibleRadius, distFromCenter)
+        const fadeStart = mul(uVisibleRadius, 0.8)
+        const fadeEnd = mul(uVisibleRadius, 1.12)
+        const fadeFactor = smoothstep(fadeStart, fadeEnd, distFromCenter)
         const distanceScale = sub(1.0, fadeFactor)
 
         const x = mul(sub(xSide, 0.5), width)
@@ -264,6 +271,11 @@ export default function grassVertex(
                 mul(time, windSpeed),
             ),
         )
+        const stabilizedWindStrength = mix(
+            windStrength,
+            mul(windStrength, 0.35),
+            stabilizeFactor,
+        )
 
         const flutter = mul(
             noise(
@@ -271,8 +283,13 @@ export default function grassVertex(
             ),
             0.1,
         )
+        const stabilizedFlutter = mix(
+            flutter,
+            mul(flutter, 0.2),
+            stabilizeFactor,
+        )
 
-        const windCombined = add(windStrength, flutter)
+        const windCombined = add(stabilizedWindStrength, stabilizedFlutter)
 
         const windAngle = add(0.0, mul(windCombined, 0.2))
         const windAxis = vec3(cos(windAngle), 0.0, sin(windAngle))
@@ -283,10 +300,15 @@ export default function grassVertex(
             noise(vec3(grassBladeWorldPos.xz, mul(time, 1.5))),
             add(mul(windCombined, 0.5), 0.125),
         )
+        const stabilizedLeanAnimation = mix(
+            randomLeanAnimation,
+            mul(randomLeanAnimation, 0.2),
+            stabilizeFactor,
+        )
 
         const leanFactor = add(
             remap(hashVal.y, float(-1.0), float(1.0), float(-0.2), float(0.2)),
-            randomLeanAnimation,
+            stabilizedLeanAnimation,
         )
 
         // Interaction Logic
@@ -377,10 +399,15 @@ export default function grassVertex(
         // 두께감 계산 시에는 블렌딩된 노말보다 실제 노말을 쓰는 것이 더 정확한 외곽선을 만듦
         const viewDotNormal = saturateValue(abs(dot(exactWorldNormal, viewDir)))
         const viewSpaceThickenFactor = pow(sub(1.0, viewDotNormal), float(3.0))
+        const stabilizedThickenFactor = mix(
+            viewSpaceThickenFactor,
+            float(0.18),
+            stabilizeFactor,
+        )
 
         const mvPosition = mul(modelViewMatrix, vec4(grassLocalPosition, 1.0))
         const thickenOffset = mul(
-            viewSpaceThickenFactor,
+            stabilizedThickenFactor,
             sub(xSide, 0.5),
             width,
             0.5,
@@ -410,7 +437,7 @@ export default function grassVertex(
         vGrassData.assign(vec4(x, heightPercent, xSide, grassType))
 
         // --- Distance Culling (hard discard beyond visible radius) ---
-        const cullingDiscard = distFromCenter.greaterThan(mul(uVisibleRadius, 1.05))
+        const cullingDiscard = distFromCenter.greaterThan(mul(uVisibleRadius, 1.25))
 
         // Combine discard conditions
         const shouldDiscard = isInvalid.or(tileGrassHeight.lessThan(0.25)).or(cullingDiscard)

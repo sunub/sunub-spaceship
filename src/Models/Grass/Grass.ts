@@ -180,7 +180,7 @@ export class Grass extends ResourceModel {
 
         const mesh = new Mesh(geometry, this.grassMaterial)
         mesh.frustumCulled = false
-        mesh.castShadow = true
+        mesh.castShadow = false
         mesh.receiveShadow = true
 
         this.grassMeshes.push(mesh)

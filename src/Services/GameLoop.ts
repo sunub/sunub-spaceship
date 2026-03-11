@@ -15,7 +15,7 @@ import type { EventBus } from "@/core/EventBus/EventBus"
 import { GameEvents } from "@/core/EventBus/EventBusType"
 import type { TerrainVisibilityArea } from "@/Services/TerrainVisibilityArea"
 
-export type GameLoopMode = "entry" | "full"
+export type GameLoopMode = "entry" | "transition" | "full"
 
 @injectable()
 export class GameLoop {
@@ -136,7 +136,7 @@ export class GameLoop {
             }
             await this.rendering.update()
 
-            if (this.cssRenderer && this.scene && this.camera.instance) {
+            if (isFullMode && this.cssRenderer && this.scene && this.camera.instance) {
                 await this.cssRenderer.render(this.scene, this.camera.instance)
             }
         } catch (error) {

@@ -31,15 +31,15 @@ export class Github extends ResourceModel {
                 const material = mesh.material as MeshStandardMaterial
 
                 const materialParams: any = {}
-                const texNode = texture(material.map ?? undefined)
-                if (material.color) {
-                    materialParams.colorNode = texNode.mul(
-                        color(material.color),
-                    )
-                } else {
-                    materialParams.colorNode = texNode
-                }
                 if (material.map) {
+                    const texNode = texture(material.map)
+                    if (material.color) {
+                        materialParams.colorNode = texNode.mul(
+                            color(material.color),
+                        )
+                    } else {
+                        materialParams.colorNode = texNode
+                    }
                 } else if (material.color) {
                     materialParams.colorNode = color(material.color)
                 }

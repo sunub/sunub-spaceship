@@ -23,30 +23,38 @@ export class TerrainVisibilityArea implements IGameObject {
 
     private readonly floorPlane = new Plane(new Vector3(0, 1, 0), 0)
     private readonly raycaster = new Raycaster()
+    private readonly tempNdc = new Vector2()
     private readonly nearLeft = new Vector3()
     private readonly nearRight = new Vector3()
     private readonly farLeft = new Vector3()
     private readonly farRight = new Vector3()
-    private readonly tempVec3 = new Vector3()
-    private readonly tempVec3B = new Vector3()
+    private readonly topLeft = new Vector3()
+    private readonly topRight = new Vector3()
+    private readonly midNear = new Vector3()
+    private readonly midFar = new Vector3()
 
     private debugGroup: Mesh[] = []
     private centerMarker!: Mesh
     private radiusMarker!: Mesh
     private currentCenter = new Vector3()
     private currentRadius = 0
+    private updateAccumulator = 0
+    private readonly idleUpdateInterval = 1 / 12
+    private readonly minimumRadius = 25
+    private readonly radiusPadding = 18
+    private readonly radiusPaddingRatio = 0.22
 
     private debugParams = {
         visible: false,
         areaColor: "#00ff00",
         offsetY: 0.1,
-        radiusMultiplier: 1.0,
+        radiusMultiplier: 1.25,
     }
 
     constructor(
         @inject(GAME_CONTEXT.CORE.Camera) private camera: Camera,
         @inject(GAME_CONTEXT.CORE.Scene) private scene: Scene
-    ) {}
+    ) { }
 
     public async initialize() {
         this.createDebugMeshes()
@@ -54,6 +62,16 @@ export class TerrainVisibilityArea implements IGameObject {
     }
 
     public update(_delta: number): void {
+        this.updateAccumulator += _delta
+        const updateInterval = this.shouldUseRealtimeUpdates()
+            ? 0
+            : this.idleUpdateInterval
+
+        if (updateInterval > 0 && this.updateAccumulator < updateInterval) {
+            return
+        }
+
+        this.updateAccumulator = 0
         this.calculateVisibility()
         this.updateDebugVisuals()
     }
@@ -70,31 +88,53 @@ export class TerrainVisibilityArea implements IGameObject {
         // Using slightly smaller bounds to keep grass strictly within view if desired, but standard -1~1 is fine
         this.intersectFloor(-1, -1, camera, this.nearLeft)
         this.intersectFloor(1, -1, camera, this.nearRight)
+        this.intersectFloor(0, -1, camera, this.midNear)
 
         // Far Plane Corners
-        this.intersectFloor(-1, 0.5, camera, this.farLeft) // Use 0.5 Y for horizon avoidance or full 1.0
-        this.intersectFloor(1, 0.5, camera, this.farRight)
+        this.intersectFloor(-1, 0.25, camera, this.farLeft)
+        this.intersectFloor(1, 0.25, camera, this.farRight)
+        this.intersectFloor(-1, 1, camera, this.topLeft)
+        this.intersectFloor(1, 1, camera, this.topRight)
+        this.intersectFloor(0, 1, camera, this.midFar)
 
         // 2. Calculate Center
-        // Approximate center by averaging the four corners
-        // Or better, average of the diagonal centers to weight it properly
-        const centerNear = this.tempVec3.copy(this.nearLeft).lerp(this.nearRight, 0.5)
-        const centerFar = this.tempVec3B.copy(this.farLeft).lerp(this.farRight, 0.5)
+        const sampledPoints = [
+            this.nearLeft,
+            this.nearRight,
+            this.midNear,
+            this.farLeft,
+            this.farRight,
+            this.topLeft,
+            this.topRight,
+            this.midFar,
+        ]
 
-        this.currentCenter.copy(centerNear).lerp(centerFar, 0.5)
+        this.currentCenter.set(0, 0, 0)
+        sampledPoints.forEach((point) => {
+            this.currentCenter.add(point)
+        })
+        this.currentCenter.divideScalar(sampledPoints.length)
 
         // Flatten Y to 0 (just in case)
         this.currentCenter.y = 0
 
         // 3. Calculate Radius
         // Radius should cover the furthest point from the center
-        const distFarLeft = this.currentCenter.distanceTo(this.farLeft)
-        const distFarRight = this.currentCenter.distanceTo(this.farRight)
-        const distNearLeft = this.currentCenter.distanceTo(this.nearLeft)
-        const distNearRight = this.currentCenter.distanceTo(this.nearRight)
+        const maxDistance = sampledPoints.reduce((max, point) => {
+            return Math.max(max, this.currentCenter.distanceTo(point))
+        }, 0)
+
+        const viewportPadding = Math.max(
+            this.radiusPadding,
+            maxDistance * this.radiusPaddingRatio,
+            (camera.aspect - 1) * 12,
+        )
 
         // Safety: ensure a minimum radius
-        this.currentRadius = Math.max(distFarLeft, distFarRight, distNearLeft, distNearRight, 15.0)
+        this.currentRadius = Math.max(
+            maxDistance + viewportPadding,
+            this.minimumRadius,
+        )
 
         // Apply debug multiplier
         this.currentRadius *= this.debugParams.radiusMultiplier
@@ -105,7 +145,8 @@ export class TerrainVisibilityArea implements IGameObject {
     }
 
     private intersectFloor(ndcX: number, ndcY: number, camera: any, target: Vector3) {
-        this.raycaster.setFromCamera(new Vector2(ndcX, ndcY), camera)
+        this.tempNdc.set(ndcX, ndcY)
+        this.raycaster.setFromCamera(this.tempNdc, camera)
 
         // Check intersection with the infinite floor plane
         const intersection = this.raycaster.ray.intersectPlane(this.floorPlane, target)
@@ -115,11 +156,15 @@ export class TerrainVisibilityArea implements IGameObject {
             // Fallback: This is tricky if the horizon is visible.
             // For isometric-like games, it usually hits.
             // If it doesn't hit, we project a point at some max distance on the ray projected to XZ plane.
-            const fallbackDist = 300
+            const fallbackDist = Math.min(Math.max(camera.far * 0.35, 300), 700)
             target.copy(this.raycaster.ray.origin)
-                  .add(this.raycaster.ray.direction.multiplyScalar(fallbackDist))
+                .add(this.raycaster.ray.direction.multiplyScalar(fallbackDist))
             target.y = 0
         }
+    }
+
+    private shouldUseRealtimeUpdates(): boolean {
+        return this.camera.mode === "follow" || this.camera.isTransitioning
     }
 
     private createDebugMeshes() {
@@ -148,7 +193,7 @@ export class TerrainVisibilityArea implements IGameObject {
     private updateDebugVisuals() {
         // Toggle visibility based on params
         if (this.centerMarker.visible !== this.debugParams.visible) {
-             this.debugGroup.forEach(m => m.visible = this.debugParams.visible)
+            this.debugGroup.forEach(m => m.visible = this.debugParams.visible)
         }
 
         if (!this.debugParams.visible) return

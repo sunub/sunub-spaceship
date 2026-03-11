@@ -55,6 +55,8 @@ export class Birds extends ResourceModel {
     private timeUniform = uniform(0)
     private deltaUniform = uniform(0)
     private predatorUniform = uniform(new Vector3())
+    private computeAccumulator = 0
+    private readonly computeInterval = 1000 / 30
 
     private separationDist = uniform(20.0)
     private alignmentDist = uniform(20.0)
@@ -317,8 +319,8 @@ export class Birds extends ResourceModel {
 
         // InstancedMesh 생성
         this.mesh = new InstancedMesh(geometry, material, this.COUNT)
-        this.mesh.castShadow = true
-        this.mesh.receiveShadow = true
+        this.mesh.castShadow = false
+        this.mesh.receiveShadow = false
         this.mesh.frustumCulled = false
 
         if (this.modelGroup) {
@@ -330,11 +332,17 @@ export class Birds extends ResourceModel {
     public update(_deltaTime: number): void {
         if (!this.mesh) return
 
-        const delta = this.time.delta
+        this.computeAccumulator += this.time.delta
+        if (this.computeAccumulator < this.computeInterval) {
+            return
+        }
+
+        const delta = this.computeAccumulator
+        this.computeAccumulator = 0
         this.timeUniform.value = this.time.elapsed * 0.001
         this.deltaUniform.value = delta
 
-        const ship = this.sceneManager.getObjectByName("SpaceShip")
+        const ship = this.sceneManager.getObjectByName("ShipPivot")
         if (ship) {
             this.predatorUniform.value.copy(ship.position)
         }

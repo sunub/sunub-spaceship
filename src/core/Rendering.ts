@@ -94,6 +94,19 @@ export class Rendering {
         this.setupRenderingDebug()
     }
 
+    public async preparePresentation(frameCount: number = 2) {
+        if (!this.postProcessing) {
+            this.setPostProcessing()
+        }
+
+        await this.renderer.compileAsync(this.scene, this.camera.instance)
+
+        for (let i = 0; i < frameCount; i++) {
+            await this.render()
+            await this.waitForNextFrame()
+        }
+    }
+
     async setupEventBus() {
         const unsubscribe = this.eventBus.on(GameEvents.TERMINAL_CLOSED, () => {
             this.renderer.domElement.focus()
@@ -259,9 +272,15 @@ export class Rendering {
 
     public async update() {
         try {
-            this.render()
+            await this.render()
         } catch (e) {
             console.error("Renderer Error detected:", e)
         }
+    }
+
+    private waitForNextFrame(): Promise<void> {
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => resolve())
+        })
     }
 }

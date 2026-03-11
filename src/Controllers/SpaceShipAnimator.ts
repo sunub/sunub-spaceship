@@ -1,6 +1,5 @@
 import { injectable } from "inversify";
 import { Object3D } from "three/webgpu";
-import gsap from "gsap";
 
 @injectable()
 export class SpaceShipAnimator {
@@ -12,7 +11,11 @@ export class SpaceShipAnimator {
         this._maxBankingAngle = maxBankingAngle;
     }
 
-    public updateBanking(rollInput: number): void {
+    public updateBanking(
+        rollInput: number,
+        deltaTime: number,
+        responseSpeed: number,
+    ): void {
         if (!this._visualPivot) return;
 
         let targetAngle = Math.abs(rollInput) > 0.01 ? rollInput * this._maxBankingAngle : 0;
@@ -22,12 +25,9 @@ export class SpaceShipAnimator {
             Math.min(this._maxBankingAngle, targetAngle)
         );
 
-        gsap.to(this._visualPivot.rotation, {
-            x: targetAngle,
-            duration: 0.8,
-            ease: "power2.out",
-            overwrite: true,
-        });
+        const smoothing = 1 - Math.exp(-Math.max(responseSpeed, 0.001) * deltaTime);
+        this._visualPivot.rotation.x +=
+            (targetAngle - this._visualPivot.rotation.x) * smoothing;
     }
 
     public setMaxBankingAngle(angleRad: number): void {

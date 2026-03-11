@@ -408,8 +408,8 @@ export class Lighting {
         // debugOptions.followCamera가 true면 카메라 타겟을, 아니면 (0,0,0)을 바라봄
         const targetPos = new Vector3(0, 0, 0)
 
-        if (this.debugOptions.followCamera && this.camera.orbitControls) {
-            targetPos.copy(this.camera.orbitControls.target)
+        if (this.debugOptions.followCamera) {
+            this.camera.getFocusTarget(targetPos)
         }
 
         // 3. 조명 위치 업데이트 (Target + Offset)

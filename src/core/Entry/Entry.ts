@@ -9,7 +9,6 @@ import { LoadingAnimation } from "./model/LoadingAnimation"
 import { Planet } from "./model/Planet"
 import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "../DI/DITypes"
-import type { Lighting } from "@/core/Lighting"
 import type { ISceneManager } from "@/Services/ISceneManager"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ResourceModel } from "@/Models"
@@ -29,7 +28,6 @@ export class Entry extends EventEmitter {
     private progressUpdateQueued = false
 
     constructor(
-        @inject(GAME_CONTEXT.CORE.Lighting) private lighting: Lighting,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) private sceneManager: ISceneManager,
         @inject(GAME_CONTEXT.SERVICE.ResourceService) private resourceService: IResourceService,
         @inject(GAME_CONTEXT.CORE.EventBus) private eventBus: EventBus,
@@ -42,7 +40,7 @@ export class Entry extends EventEmitter {
         if (button) {
             button.removeAttribute("disabled")
             button.addEventListener("click", async () => {
-                this.dispose()
+                button.setAttribute("disabled", "true")
                 await callback()
             })
         }
@@ -106,7 +104,6 @@ export class Entry extends EventEmitter {
 
     public async setupEntryScene() {
         const objects_pos = new Vector3(0, 39.0, 0)
-        this.lighting.initialize()
         this.initializeSceneObjects()
         this.loadingAnimation = new LoadingAnimation(objects_pos)
         await this.loadingAnimation.initialize()
@@ -119,6 +116,21 @@ export class Entry extends EventEmitter {
             },
         )
         await Promise.all(object_initializers_promises)
+    }
+
+    public showPreparingLaunchState() {
+        const button = document.getElementById("entry-button")
+        if (button) {
+            button.setAttribute("disabled", "true")
+        }
+
+        if (!this.loadingText) {
+            this.loadingText = document.getElementById("loading-txt") as HTMLParagraphElement
+        }
+
+        if (this.loadingText) {
+            this.loadingText.innerText = "Preparing Launch"
+        }
     }
 
     private initializeSceneObjects() {

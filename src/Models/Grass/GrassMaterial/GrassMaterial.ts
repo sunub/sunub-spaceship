@@ -1,5 +1,5 @@
 import { Fn, float, uniform } from "three/tsl"
-import { DoubleSide, Vector3, Vector4 } from "three/webgpu"
+import { DoubleSide, FrontSide, Vector3, Vector4 } from "three/webgpu"
 
 import { MeshDefaultMaterial } from "@/Materials/MeshDefaultMaterial"
 import grassFragment from "./Shader/grassFragment"
@@ -54,6 +54,7 @@ export class GrassMaterial extends MeshDefaultMaterial {
             colorNode,
             normalNode: vNormal,
             side: DoubleSide,
+            shadowSide: FrontSide,
             hasLightBounce: false,
             hasCoreShadows: false,
             hasDropShadows: false,

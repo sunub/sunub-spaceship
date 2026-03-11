@@ -63,17 +63,39 @@ export class Game {
      * Phase 3a: 월드 오브젝트와 SpaceShip을 생성하고 초기화합니다.
      */
     public async prepareGameObjects(
-        options?: { skipTerrainInitialization?: boolean },
+        options?: {
+            skipTerrainInitialization?: boolean
+            stageSceneObjects?: boolean
+        },
     ): Promise<void> {
+        const stageSceneObjects = options?.stageSceneObjects ?? false
+
         await Promise.all([
-            this.worldManager.prepareGameObjects(options),
+            this.worldManager.prepareGameObjects({
+                skipTerrainInitialization: options?.skipTerrainInitialization,
+                addToScene: !stageSceneObjects,
+                visible: !stageSceneObjects,
+            }),
             this.projectManager.initialize(),
         ]);
 
+        this.projectManager.setOutpostsVisible(!stageSceneObjects)
+        if (!stageSceneObjects) {
+            this.projectManager.attachPreparedOutposts()
+        }
+
         const spaceShip = this.spaceShipFactory();
-        await spaceShip.initialize();
+        await spaceShip.initialize(!stageSceneObjects);
+        spaceShip.setVisible(!stageSceneObjects)
         this.worldManager.addGameObject(spaceShip);
         this.spaceShip = spaceShip;
+    }
+
+    public revealPreparedGameObjects(): void {
+        this.worldManager.attachPreparedObjects()
+        this.worldManager.setWorldVisibility(true)
+        this.projectManager.attachPreparedOutposts()
+        this.projectManager.setOutpostsVisible(true)
     }
 
     /**
@@ -115,7 +137,7 @@ export class Game {
 
         this.notification.show(
             "조작키를 사용하여 우주선을 조작해 프로젝트 영역을 찾아주세요",
-            3000,
+            5000,
         );
         this.spaceShip.unlock();
     }

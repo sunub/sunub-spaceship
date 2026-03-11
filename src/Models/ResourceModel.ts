@@ -8,6 +8,7 @@ export abstract class ResourceModel implements IGameObject {
     public modelGroup: Object3D | null = null
     protected mesh: Object3D | null = null
     public rigidBody: RigidBody | null = null
+    private isAttachedToScene: boolean = false
 
     constructor(
         protected readonly resourcesManager: IResourceService,
@@ -19,12 +20,42 @@ export abstract class ResourceModel implements IGameObject {
     ) {}
 
     public async initialize(addToScene: boolean = true): Promise<void> {
-        await this.loadModel(addToScene);
+        await this.loadModel();
         await this.setupPhysics();
         this.onModelLoaded();
+
+        if (addToScene) {
+            this.attachToScene()
+        }
     }
 
-    protected async loadModel(addToScene: boolean = true): Promise<void> {
+    public attachToScene(): void {
+        if (!this.modelGroup || this.isAttachedToScene) {
+            return
+        }
+
+        this.sceneManager.add(this.modelGroup)
+        this.isAttachedToScene = true
+    }
+
+    public detachFromScene(): void {
+        if (!this.modelGroup || !this.isAttachedToScene) {
+            return
+        }
+
+        this.sceneManager.remove(this.modelGroup)
+        this.isAttachedToScene = false
+    }
+
+    public setVisible(visible: boolean): void {
+        if (!this.modelGroup) {
+            return
+        }
+
+        this.modelGroup.visible = visible
+    }
+
+    protected async loadModel(): Promise<void> {
         const modelScene = this.resourcesManager.getItem(this.modelName)
         if (!modelScene) {
             throw new Error(
@@ -51,9 +82,6 @@ export abstract class ResourceModel implements IGameObject {
         if (this.modelGroup) {
             this.modelGroup.position.copy(this.position)
             this.modelGroup.scale.copy(this.scale)
-            if (addToScene) {
-                this.sceneManager.add(this.modelGroup)
-            }
         }
     }
 
@@ -107,8 +135,6 @@ export abstract class ResourceModel implements IGameObject {
     }
 
     dispose(): void {
-        if(this.modelGroup) {
-            this.sceneManager.remove(this.modelGroup)
-        }
+        this.detachFromScene()
     }
 }

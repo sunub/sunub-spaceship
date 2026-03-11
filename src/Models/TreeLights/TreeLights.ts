@@ -98,8 +98,8 @@ export class TreeLights extends ResourceModel {
                 matrices.length,
             )
             instancedMesh.name = `${this.modelName}_${geometry.uuid}`
-            instancedMesh.castShadow = true
-            instancedMesh.receiveShadow = true
+            instancedMesh.castShadow = false
+            instancedMesh.receiveShadow = false
             instancedMesh.frustumCulled = false
 
             for (let i = 0; i < matrices.length; i++) {

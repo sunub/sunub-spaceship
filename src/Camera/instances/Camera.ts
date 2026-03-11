@@ -225,6 +225,10 @@ export class Camera {
         this.isManualControlling = false
     }
 
+    public getFocusTarget(out: Vector3 = new Vector3()): Vector3 {
+        return out.copy(this.angle.target)
+    }
+
 
     private updateCameraTransformFromAngle() {
         // 카메라 위치 = 바라보는 점(Target) + 떨어진 거리 벡터(Value/Offset)

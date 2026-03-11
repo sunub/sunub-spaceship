@@ -54,7 +54,7 @@ export class WorldManager {
     }
 
     if (!this.isTerrainInitialized) {
-      await this.terrain.initialize()
+      await this.terrain.initialize(false)
       this.isTerrainInitialized = true
     }
 
@@ -63,24 +63,54 @@ export class WorldManager {
 
   public async prepareGameObjects(options?: {
     skipTerrainInitialization?: boolean
+    addToScene?: boolean
+    visible?: boolean
   }) {
-    const { skipTerrainInitialization = false } = options ?? {}
+    const {
+      skipTerrainInitialization = false,
+      addToScene = true,
+      visible = true,
+    } = options ?? {}
 
     const sceneObjectsPromises = this.worldObjects.map(async (obj) => {
       if (obj instanceof Floor) {
         this.terrain = obj
 
         if (skipTerrainInitialization && this.isTerrainInitialized) {
+          obj.setVisible(visible)
+          if (addToScene) {
+            obj.attachToScene()
+          }
           return
         }
-        await obj.initialize()
+        await obj.initialize(addToScene)
+        obj.setVisible(visible)
         this.isTerrainInitialized = true
       } else if (obj instanceof ResourceModel) {
-        await obj.initialize()
+        await obj.initialize(addToScene)
+        obj.setVisible(visible)
       }
     });
 
     await Promise.all(sceneObjectsPromises);
+  }
+
+  public attachPreparedObjects() {
+    this.worldObjects.forEach((obj) => {
+      if ("attachToScene" in obj && typeof obj.attachToScene === "function") {
+        obj.attachToScene()
+      }
+    })
+  }
+
+  public setWorldVisibility(visible: boolean) {
+    this.worldObjects.forEach((obj) => {
+      if ("setVisible" in obj && typeof obj.setVisible === "function") {
+        obj.setVisible(visible)
+      } else if ("visible" in obj) {
+        (obj as Object3D).visible = visible
+      }
+    })
   }
 
   public addGameObject(gameObject: (IGameObject | Mesh | Object3D)) {

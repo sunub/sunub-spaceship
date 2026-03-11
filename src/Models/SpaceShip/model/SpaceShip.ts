@@ -1,15 +1,23 @@
 import { ColliderDesc, RigidBodyDesc, RigidBody } from "@dimforge/rapier3d-compat";
+import { color, float, texture } from "three/tsl";
 import {
     Box3,
+    ClampToEdgeWrapping,
+    FrontSide,
     MathUtils,
     Mesh,
     Object3D,
     Quaternion,
+    type MeshStandardMaterial,
+    NearestFilter,
+    SRGBColorSpace,
+    type Texture,
     Vector2,
     Vector3,
 } from "three/webgpu";
 import { inject, injectable } from "inversify";
 import { FlightController } from "@/Controllers/FlightController";
+import { MeshDefaultMaterial } from "@/Materials/MeshDefaultMaterial";
 import { ResourceModel } from "../../ResourceModel";
 import { SpaceShipPositionDebugModule } from "../debug/SpaceShip.PositionDebug";
 import { SpaceShipVisualDebugModule } from "../debug/SpaceShip.VisualDebug";
@@ -33,10 +41,15 @@ import { SpaceShipDebugger } from "@/Controllers/SpaceShipDebugger";
 export class SpaceShip extends ResourceModel {
     public shipPivot: Object3D | null = null;
     private visualPivot: Object3D | null = null;
+    private readonly materialCache = new Map<string, MeshDefaultMaterial>();
 
     // Interpolation state
     private readonly prevPosition: Vector3 = new Vector3();
     private readonly prevRotation: Quaternion = new Quaternion();
+    private readonly currentPosition: Vector3 = new Vector3();
+    private readonly currentRotation: Quaternion = new Quaternion();
+    private readonly zeroVector2: Vector2 = new Vector2(0, 0);
+    private readonly lastKeyboardState = { roll: 0, thrust: 0 };
 
     private readonly flightController: FlightController;
     private isLocked: boolean = true;
@@ -127,8 +140,13 @@ export class SpaceShip extends ResourceModel {
 
         this.mesh.traverse((child) => {
             if (child instanceof Mesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
+                const originalMaterial = child.material as MeshStandardMaterial;
+                const optimizedMaterial = this.getOptimizedMaterial(originalMaterial);
+                const isEmissiveSurface = this.isEmissiveSurface(originalMaterial);
+
+                child.material = optimizedMaterial;
+                child.castShadow = !isEmissiveSurface;
+                child.receiveShadow = false;
             }
         });
 
@@ -153,6 +171,98 @@ export class SpaceShip extends ResourceModel {
         }
 
         this.inputHandler.initialize(this.mesh, this.sceneManager);
+    }
+
+    private getOptimizedMaterial(material: MeshStandardMaterial): MeshDefaultMaterial {
+        const cachedMaterial = this.materialCache.get(material.uuid);
+        if (cachedMaterial) {
+            return cachedMaterial;
+        }
+
+        const materialParams: any = {
+            side: FrontSide,
+            shadowSide: FrontSide,
+            hasDropShadows: false,
+            hasLightBounce: false,
+        };
+
+        if (material.map) {
+            this.optimizeTextureForMobile(material.map);
+            const colorNode = texture(material.map);
+            materialParams.colorNode = material.color
+                ? colorNode.mul(color(material.color))
+                : colorNode;
+        } else if (material.color) {
+            materialParams.colorNode = color(material.color);
+        }
+
+        if (material.transparent || material.opacity < 1) {
+            materialParams.transparent = true;
+            materialParams.alphaNode = float(material.opacity);
+            materialParams.depthWrite = false;
+        }
+
+        if (material.alphaTest > 0) {
+            materialParams.alphaTest = material.alphaTest;
+        }
+
+        const emissiveNode = this.createEmissiveNode(material);
+        if (emissiveNode) {
+            materialParams.emissionNode = emissiveNode;
+            materialParams.hasCoreShadows = false;
+        }
+
+        const optimizedMaterial = new MeshDefaultMaterial(materialParams);
+        this.materialCache.set(material.uuid, optimizedMaterial);
+        return optimizedMaterial;
+    }
+
+    private createEmissiveNode(material: MeshStandardMaterial) {
+        const hasEmissiveColor =
+            material.emissive.getHex() !== 0 && material.emissiveIntensity > 0;
+
+        if (material.emissiveMap) {
+            this.optimizeTextureForMobile(material.emissiveMap);
+            let emissionNode: any = texture(material.emissiveMap);
+
+            if (hasEmissiveColor) {
+                emissionNode = emissionNode.mul(color(material.emissive));
+            }
+
+            if (material.emissiveIntensity !== 1) {
+                emissionNode = emissionNode.mul(float(material.emissiveIntensity));
+            }
+
+            return emissionNode;
+        }
+
+        if (!hasEmissiveColor) {
+            return null;
+        }
+
+        return color(material.emissive).mul(float(material.emissiveIntensity));
+    }
+
+    private optimizeTextureForMobile(textureMap: Texture): void {
+        textureMap.wrapS = ClampToEdgeWrapping;
+        textureMap.wrapT = ClampToEdgeWrapping;
+        textureMap.minFilter = NearestFilter;
+        textureMap.magFilter = NearestFilter;
+        textureMap.generateMipmaps = false;
+        textureMap.colorSpace = SRGBColorSpace;
+        textureMap.needsUpdate = true;
+    }
+
+    private isEmissiveSurface(material: MeshStandardMaterial): boolean {
+        const materialName = material.name.toLowerCase();
+        const hasEmissiveColor =
+            material.emissive.getHex() !== 0 && material.emissiveIntensity > 0;
+
+        return Boolean(
+            material.emissiveMap ||
+            hasEmissiveColor ||
+            materialName.includes("light"),
+        );
     }
 
     protected override async setupPhysics(): Promise<void> {
@@ -243,8 +353,8 @@ export class SpaceShip extends ResourceModel {
         const position = this.rigidBody.translation();
         const rotation = this.rigidBody.rotation();
 
-        const currentPos = new Vector3(position.x, position.y, position.z);
-        const currentRot = new Quaternion(
+        this.currentPosition.set(position.x, position.y, position.z);
+        this.currentRotation.set(
             rotation.x,
             rotation.y,
             rotation.z,
@@ -253,12 +363,12 @@ export class SpaceShip extends ResourceModel {
 
         this.shipPivot.position.lerpVectors(
             this.prevPosition,
-            currentPos,
+            this.currentPosition,
             alpha,
         );
         this.shipPivot.quaternion.slerpQuaternions(
             this.prevRotation,
-            currentRot,
+            this.currentRotation,
             alpha,
         );
 
@@ -280,7 +390,7 @@ export class SpaceShip extends ResourceModel {
             Math.abs(controlState.thrust) > 0.1 || Math.abs(controlState.roll) > 0.1;
 
         if (isKeyboardActive) {
-            this.flightController.updatePointerInput(new Vector2(0));
+            this.flightController.updatePointerInput(this.zeroVector2);
             const effectiveThrust =
                 this.sensor.isObstacleDetected && controlState.thrust > 0
                     ? 0
@@ -292,18 +402,19 @@ export class SpaceShip extends ResourceModel {
         } else {
             const isThrustAllowed = !this.sensor.isObstacleDetected;
             this.flightController.updatePointerInput(
-                controlState.pointerVector || new Vector2(0),
+                controlState.pointerVector || this.zeroVector2,
                 isThrustAllowed,
             );
             this.flightController.updateMovementInput(0, 0);
         }
 
-        this.animator.updateBanking(controlState.roll);
+        this.animator.updateBanking(
+            controlState.roll,
+            this.time.delta * 0.001,
+            this.bankingLerpSpeed,
+        );
 
-        this.eventBus.emit(GameEvents.KEYBOARD_INPUT, {
-            roll: controlState.roll,
-            thrust: controlState.thrust,
-        });
+        this.emitKeyboardStateIfChanged(controlState.roll, controlState.thrust);
 
         if (controlState.isActionActive) {
             this.audioController.updateEngineSound(true);
@@ -311,6 +422,26 @@ export class SpaceShip extends ResourceModel {
         } else {
             this.audioController.updateEngineSound(false);
         }
+    }
+
+    private emitKeyboardStateIfChanged(roll: number, thrust: number): void {
+        const normalizedRoll = roll < -0.1 ? -1 : roll > 0.1 ? 1 : 0;
+        const normalizedThrust = thrust < -0.1 ? -1 : thrust > 0.1 ? 1 : 0;
+
+        if (
+            normalizedRoll === this.lastKeyboardState.roll &&
+            normalizedThrust === this.lastKeyboardState.thrust
+        ) {
+            return;
+        }
+
+        this.lastKeyboardState.roll = normalizedRoll;
+        this.lastKeyboardState.thrust = normalizedThrust;
+
+        this.eventBus.emit(GameEvents.KEYBOARD_INPUT, {
+            roll: normalizedRoll,
+            thrust: normalizedThrust,
+        });
     }
 
     public setMaxBankingAngle(angleDegrees: number): void {
@@ -334,9 +465,18 @@ export class SpaceShip extends ResourceModel {
 
     public lock(): void {
         this.isLocked = true;
+        this.emitKeyboardStateIfChanged(0, 0);
     }
 
     public unlock(): void {
         this.isLocked = false;
+    }
+
+    public override dispose(): void {
+        this.materialCache.forEach((material) => {
+            material.dispose();
+        });
+        this.materialCache.clear();
+        super.dispose();
     }
 }

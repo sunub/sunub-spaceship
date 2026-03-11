@@ -64,11 +64,23 @@ export class ProjectManager {
     public async initialize() {
         const projectObjectPromise = this.projects.map(async (data) => {
             const outpost = this.projectOutpostFactory(data);
-            await outpost.initialize(true);
+            await outpost.initialize(false);
             return outpost
         })
 
         this.outposts = await Promise.all(projectObjectPromise)
+    }
+
+    public attachPreparedOutposts(): void {
+        this.outposts.forEach((outpost) => {
+            outpost.attachToScene?.()
+        })
+    }
+
+    public setOutpostsVisible(visible: boolean): void {
+        this.outposts.forEach((outpost) => {
+            outpost.setVisible?.(visible)
+        })
     }
 
     private setTrackingTargets(shipBody: RigidBody) {
