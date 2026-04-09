@@ -174,7 +174,7 @@ export class GameLoop {
                 },
             },
             {
-                name: "visibilitySync",
+                name: "visibility",
                 shouldRun: ({ isFullMode }) => isFullMode,
                 run: () => {
                     this.worldManager.syncVisibilityCulling()
