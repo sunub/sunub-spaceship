@@ -22,14 +22,14 @@ import {
     FrontSide,
     MeshLambertNodeMaterial,
 } from "three/webgpu"
-import type { Floor } from "../Models";
-import type { Lighting } from "../core/Lighting";
-import type { FixedNightFog } from "../Environment/Fog";
+import type { Lighting } from "../core/Lighting"
+import type { FixedNightFog } from "../Environment/Fog"
+import type { Floor } from "../Models"
 
 interface MeshDefaultMaterialContext {
-    lighting: Lighting;
-    terrian: Floor;
-    fog: FixedNightFog;
+    lighting: Lighting
+    terrian: Floor
+    fog: FixedNightFog
 }
 
 interface MeshDefaultMaterialParameters {
@@ -55,6 +55,7 @@ interface MeshDefaultMaterialParameters {
     transparent?: boolean
     shadowSide?: Side
     alphaTest?: number // [Fix] 인터페이스 속성 추가
+    reorientDoubleSidedNormals?: boolean
 }
 
 export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
@@ -64,8 +65,8 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
     ) => {
         return Fn(([col]: [ShaderNodeObject<Node>]) => {
             const distanceToCenter = positionWorld.xz
-            .sub(game.reveal.position2Uniform)
-            .length()
+                .sub(game.reveal.position2Uniform)
+                .length()
             distanceToCenter.greaterThan(game.reveal.distance).discard()
 
             const revealMix = distanceToCenter.step(
@@ -75,7 +76,6 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
             return mix(col.rgb, revealColor, revealMix)
         })(outputColor)
     }
-
 
     private _colorNode: ShaderNodeObject<Node>
     private _normalNode: ShaderNodeObject<Node>
@@ -89,18 +89,19 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
     public hasFog: boolean
     public hasWater: boolean
     public hasReveal: boolean
+    public reorientDoubleSidedNormals: boolean
 
     private static context: MeshDefaultMaterialContext
 
     public static setup(context: MeshDefaultMaterialContext) {
-        MeshDefaultMaterial.context = context;
+        MeshDefaultMaterial.context = context
     }
 
     constructor(parameters: MeshDefaultMaterialParameters = {}) {
         super()
-        const context = MeshDefaultMaterial.context;
-        if(!context) {
-            throw new Error('MeshDefaultMaterial.setup() must be called first!');
+        const context = MeshDefaultMaterial.context
+        if (!context) {
+            throw new Error("MeshDefaultMaterial.setup() must be called first!")
         }
 
         this.depthWrite = parameters.depthWrite ?? true
@@ -116,6 +117,8 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
         this.hasFog = parameters.hasFog ?? true
         this.hasWater = parameters.hasWater ?? true
         this.hasReveal = parameters.hasReveal ?? true
+        this.reorientDoubleSidedNormals =
+            parameters.reorientDoubleSidedNormals ?? true
 
         // [Fix] 파라미터 할당 시 타입 단언 또는 호환 타입 사용
         this._colorNode =
@@ -154,7 +157,10 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
 
             // Normal orientation
             const reorientedNormal = this._normalNode.toVar()
-            if (this.side === DoubleSide || this.side === BackSide) {
+            if (
+                this.reorientDoubleSidedNormals &&
+                (this.side === DoubleSide || this.side === BackSide)
+            ) {
                 If(frontFacing.not(), () => {
                     reorientedNormal.mulAssign(-1)
                 })
@@ -209,7 +215,10 @@ export class MeshDefaultMaterial extends MeshLambertNodeMaterial {
             if (this.hasDropShadows) dropShadowMix = catchedShadow.oneMinus()
 
             // Combined shadows
-            if ((this.hasCoreShadows || this.hasDropShadows) && context.lighting) {
+            if (
+                (this.hasCoreShadows || this.hasDropShadows) &&
+                context.lighting
+            ) {
                 const combinedShadowMix = max(
                     coreShadowMix,
                     dropShadowMix,

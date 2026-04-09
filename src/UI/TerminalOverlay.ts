@@ -1,21 +1,23 @@
 import gsap from "gsap"
-import type { ProjectData } from "@/core/ProjectRegistry"
 import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
 import type { EventBus } from "@/core/EventBus/EventBus"
 import { GameEvents } from "@/core/EventBus/EventBusType"
+import type { ProjectData } from "@/core/ProjectRegistry"
 
 @injectable()
 export class TerminalOverlay {
     private element: HTMLElement
     private isVisible: boolean = false
     private isHiding: boolean = false
-    private disposables: Array<() => void> = [];
+    private disposables: Array<() => void> = []
 
     constructor(
         @inject(GAME_CONTEXT.CORE.EventBus) private readonly eventBus: EventBus,
     ) {
-        this.element = document.getElementById("project-terminal") as HTMLElement
+        this.element = document.getElementById(
+            "project-terminal",
+        ) as HTMLElement
         this.onInteract()
     }
 
@@ -141,7 +143,7 @@ export class TerminalOverlay {
 
     public hide() {
         if (!this.isVisible || this.isHiding) {
-            return;
+            return
         }
 
         this.isHiding = true
@@ -178,22 +180,25 @@ export class TerminalOverlay {
     }
 
     public onInteract() {
-        const unsubscribe = this.eventBus.on(GameEvents.PROJECT_INTERACTION_REQUESTED, (data) => {
-            if (this.isOpen) {
-                this.hide()
-            } else {
-                this.show(data.project)
-            }
-
-        })
+        const unsubscribe = this.eventBus.on(
+            GameEvents.PROJECT_INTERACTION_REQUESTED,
+            (data) => {
+                if (this.isOpen) {
+                    this.hide()
+                } else {
+                    this.show(data.project)
+                }
+            },
+        )
         this.disposables.push(unsubscribe)
     }
 
     public dispose() {
-        this.disposables.forEach((dispose) => dispose())
-        this.disposables = [];
-        if (this.element && this.element.parentNode) {
-            this.element.parentNode.removeChild(this.element);
-        }
+        this.disposables.forEach((dispose) => {
+            dispose()
+        })
+        this.disposables = []
+        const element = this.element
+        element?.parentNode?.removeChild(element)
     }
 }

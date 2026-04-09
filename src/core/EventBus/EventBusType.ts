@@ -1,11 +1,11 @@
-import type { RigidBody } from "@dimforge/rapier3d-compat";
-import type { ProjectData } from "../ProjectRegistry";
+import type { RigidBody } from "@dimforge/rapier3d-compat"
+import type { ProjectData } from "../ProjectRegistry"
 
 export type ResizeEvent = {
-    width: number;
-    height: number;
-    pixelRatio: number;
-};
+    width: number
+    height: number
+    pixelRatio: number
+}
 
 export const GameEvents = {
     TERMINAL_OPENED: "UI:TerminalOpened",
@@ -19,25 +19,25 @@ export const GameEvents = {
     RESIZE: "Game:Resize",
     KEYBOARD_INPUT: "Input:KeyboardInput",
     ENTRY_DISPOSED: "Entry:Disposed",
-} as const;
+} as const
 
 export interface GameEventPayloads {
-    [GameEvents.TERMINAL_OPENED]: undefined;
-    [GameEvents.TERMINAL_CLOSED]: undefined;
+    [GameEvents.TERMINAL_OPENED]: undefined
+    [GameEvents.TERMINAL_CLOSED]: undefined
     [GameEvents.PLAYER_READY]: {
-        spaceshipRigidBody: RigidBody;
-    };
-    [GameEvents.GAME_PAUSED]: { reason: string };
-    [GameEvents.GAME_RESUMED]: undefined;
-    [GameEvents.GAME_VISIBILITY_HIDDEN]: undefined;
-    [GameEvents.GAME_VISIBILITY_VISIBLE]: undefined;
-    [GameEvents.PROJECT_INTERACTION_REQUESTED]: { project: ProjectData };
-    [GameEvents.RESIZE]: ResizeEvent;
-    [GameEvents.KEYBOARD_INPUT]: { roll: number; thrust: number };
-    [GameEvents.ENTRY_DISPOSED]: undefined;
+        spaceshipRigidBody: RigidBody
+    }
+    [GameEvents.GAME_PAUSED]: { reason: string }
+    [GameEvents.GAME_RESUMED]: undefined
+    [GameEvents.GAME_VISIBILITY_HIDDEN]: undefined
+    [GameEvents.GAME_VISIBILITY_VISIBLE]: undefined
+    [GameEvents.PROJECT_INTERACTION_REQUESTED]: { project: ProjectData }
+    [GameEvents.RESIZE]: ResizeEvent
+    [GameEvents.KEYBOARD_INPUT]: { roll: number; thrust: number }
+    [GameEvents.ENTRY_DISPOSED]: undefined
 }
 
-export type EventKey = keyof GameEventPayloads;
+export type EventKey = keyof GameEventPayloads
 export type EventHandler<T extends EventKey> = (
     payload: GameEventPayloads[T],
-) => void;
+) => void

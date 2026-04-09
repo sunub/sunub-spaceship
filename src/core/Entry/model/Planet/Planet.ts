@@ -1,10 +1,10 @@
 import { Object3D } from "three"
 import { uniform } from "three/tsl"
 import { Mesh, Vector3 } from "three/webgpu"
-import { PlanetMaterial } from "./PlanetMaterial"
 import { ResourceModel } from "@/Models"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
+import { PlanetMaterial } from "./PlanetMaterial"
 
 export class Planet extends ResourceModel {
     private uTime = uniform(0)

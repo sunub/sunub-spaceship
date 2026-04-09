@@ -1,7 +1,7 @@
 import CameraControls from "camera-controls"
+import { inject, injectable } from "inversify"
 import { OrbitControls } from "three/examples/jsm/Addons.js"
 import * as THREE from "three/webgpu"
-import { InputManager } from "@/Inputs/InputManager"
 import {
     Mesh,
     MeshBasicMaterial,
@@ -12,17 +12,17 @@ import {
     Vector2,
     Vector3,
 } from "three/webgpu"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { DOMManager } from "@/core/DOMManger"
+import type { InputManager } from "@/Inputs/InputManager"
 import type { Size } from "@/utils/Size"
+import type Time from "@/utils/Time"
 import { TweakPane } from "../../Debug/TweakPane"
 // Debug Modules
 import { CameraParametersDebugModule } from "../debug/Camera.ParametersDebug"
 import { CameraPositionDebugModule } from "../debug/Camera.PositionDebug"
 import { CameraTargetDebugModule } from "../debug/Camera.TargetDebug"
 import type { CameraConfig } from "../types"
-import { inject, injectable } from "inversify"
-import { GAME_CONTEXT } from "@/core/DI/DITypes"
-import type Time from "@/utils/Time"
-import type { DOMManager } from "@/core/DOMManger"
 
 type CameraMode = "orbit" | "follow" | "entry"
 
@@ -126,7 +126,8 @@ export class Camera {
         @inject(GAME_CONTEXT.UTILITY.Size) private size: Size,
         @inject(GAME_CONTEXT.UTILITY.Time) private time: Time,
         @inject(GAME_CONTEXT.MANAGER.DOMManager) private domManager: DOMManager,
-        @inject(GAME_CONTEXT.MANAGER.InputManager) private inputManager: InputManager,
+        @inject(GAME_CONTEXT.MANAGER.InputManager)
+        private inputManager: InputManager,
     ) {
         this.container = new Object3D()
         this.container.matrixAutoUpdate = false
@@ -163,7 +164,9 @@ export class Camera {
         if (this.mode === "follow" && this.followTargetObject) {
             this.handleMouseInput()
 
-            const targetPos = this.followTargetObject.getWorldPosition(new Vector3())
+            const targetPos = this.followTargetObject.getWorldPosition(
+                new Vector3(),
+            )
 
             // 수동 조작 중이 아닐 때만 타겟 위치로 Focus Point를 부드럽게 이동
             if (!this.isManualControlling) {
@@ -178,7 +181,10 @@ export class Camera {
             this.instance.position.lerp(desiredPos, this.followEasing)
             this.instance.lookAt(this.angle.target)
 
-            this.angle.value.subVectors(this.instance.position, this.angle.target)
+            this.angle.value.subVectors(
+                this.instance.position,
+                this.angle.target,
+            )
 
             return
         } else if (this.mode === "orbit" && this.orbitControls?.enabled) {
@@ -228,7 +234,6 @@ export class Camera {
     public getFocusTarget(out: Vector3 = new Vector3()): Vector3 {
         return out.copy(this.angle.target)
     }
-
 
     private updateCameraTransformFromAngle() {
         // 카메라 위치 = 바라보는 점(Target) + 떨어진 거리 벡터(Value/Offset)
@@ -385,7 +390,8 @@ export class Camera {
 
     setupInstance() {
         const { fov, near, far } = this.CAMERA_PARAMS
-        const aspect = this.size.width / this.size.height || this.CAMERA_PARAMS.aspect
+        const aspect =
+            this.size.width / this.size.height || this.CAMERA_PARAMS.aspect
         this.instance = new PerspectiveCamera(fov, aspect, near, far)
         this.instance.up.set(0, 1, 0)
 

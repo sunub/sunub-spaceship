@@ -1,3 +1,4 @@
+import { inject } from "inversify"
 import {
     color,
     cos,
@@ -21,15 +22,14 @@ import {
     type Color,
     Mesh,
     MeshBasicMaterial,
+    Object3D,
     RepeatWrapping,
     type Texture,
     type Vector2,
-    Object3D,
     Vector3,
 } from "three/webgpu"
-import { ResourceModel } from "@/Models"
-import { inject } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import { ResourceModel } from "@/Models"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
 
@@ -42,7 +42,8 @@ export class Background extends ResourceModel {
     public starTexture!: Texture
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourcesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
         position: Vector3 = new Vector3(0, 10, 0),
     ) {
@@ -51,7 +52,9 @@ export class Background extends ResourceModel {
 
     // Override loadModel since we don't load a GLTF here
     protected async loadModel(addToScene: boolean = true): Promise<void> {
-        this.starTexture = this.resourcesManager.getItem("behindeTheScene") as Texture
+        this.starTexture = this.resourcesManager.getItem(
+            "behindeTheScene",
+        ) as Texture
         if (!this.starTexture) {
             console.error("Background texture 'behindeTheScene' not found.")
             return
@@ -133,7 +136,9 @@ export class Background extends ResourceModel {
         if (this.mesh instanceof Mesh) {
             this.mesh.geometry.dispose()
             if (Array.isArray(this.mesh.material)) {
-                this.mesh.material.forEach(m => m.dispose())
+                this.mesh.material.forEach((m) => {
+                    m.dispose()
+                })
             } else {
                 this.mesh.material.dispose()
             }

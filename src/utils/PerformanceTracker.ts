@@ -39,24 +39,24 @@ interface PhaseMetric {
     resources: ResourceMetric[]
 }
 
-export class PerformanceTracker {
-    private static phases = new Map<string, PhaseMetric>()
-    private static currentPhase: string | null = null
-    private static enabled = false
+class PerformanceTrackerStore {
+    private phases = new Map<string, PhaseMetric>()
+    private currentPhase: string | null = null
+    private enabled = false
 
-    static setEnabled(enabled: boolean): void {
+    public setEnabled(enabled: boolean): void {
         this.enabled = enabled
     }
 
-    static isEnabled(): boolean {
+    public isEnabled(): boolean {
         return this.enabled
     }
 
-    static enable(): void {
+    public enable(): void {
         this.setEnabled(true)
     }
 
-    static disable(): void {
+    public disable(): void {
         this.setEnabled(false)
     }
 
@@ -64,7 +64,7 @@ export class PerformanceTracker {
     // Phase tracking
     // ──────────────────────────────────────────────
 
-    static startPhase(name: string): void {
+    public startPhase(name: string): void {
         if (!this.enabled) return
 
         // Resource Timing 버퍼 확장 (기본 250개 제한 방지)
@@ -83,7 +83,7 @@ export class PerformanceTracker {
         this.currentPhase = name
     }
 
-    static endPhase(name: string): void {
+    public endPhase(name: string): void {
         if (!this.enabled) return
         const phase = this.phases.get(name)
         if (!phase) return
@@ -97,14 +97,16 @@ export class PerformanceTracker {
 
         phase.endTime = performance.now()
         phase.duration = phase.endTime - phase.startTime
-        if (this.currentPhase === name) this.currentPhase = null
+        if (this.currentPhase === name) {
+            this.currentPhase = null
+        }
     }
 
     // ──────────────────────────────────────────────
     // Per-resource tracking
     // ──────────────────────────────────────────────
 
-    static async trackResource<T>(
+    public async trackResource<T>(
         name: string,
         type: string,
         path: string,
@@ -161,7 +163,9 @@ export class PerformanceTracker {
 
         const targetPhase = resourcePhase ?? this.currentPhase ?? "unknown"
         const phase = this.phases.get(targetPhase) ?? null
-        if (phase) phase.resources.push(metric)
+        if (phase) {
+            phase.resources.push(metric)
+        }
 
         return result
     }
@@ -170,7 +174,7 @@ export class PerformanceTracker {
     // Report
     // ──────────────────────────────────────────────
 
-    static printReport(): void {
+    public printReport(): void {
         if (!this.enabled) return
 
         console.group("📊 Resource Loading Performance Report")
@@ -180,9 +184,7 @@ export class PerformanceTracker {
         }
 
         // ──── 전체 요약 ────
-        const allResources = [...this.phases.values()].flatMap(
-            (p) => p.resources,
-        )
+        const allResources = [...this.phases.values()].flatMap((p) => p.resources)
         const totalPhaseTime = [...this.phases.values()].reduce(
             (s, p) => s + p.duration,
             0,
@@ -218,7 +220,7 @@ export class PerformanceTracker {
         console.groupEnd()
     }
 
-    private static printPhase(phase: PhaseMetric): void {
+    private printPhase(phase: PhaseMetric): void {
         const resources = phase.resources
         const totalTransfer = resources.reduce(
             (s, r) => s + Math.max(r.transferSize, 0),
@@ -234,7 +236,9 @@ export class PerformanceTracker {
         )
         const cachedCount = resources.filter((r) => r.cached).length
 
-        console.group(`🔹 Phase: ${phase.name} (${phase.duration.toFixed(1)}ms)`)
+        console.group(
+            `🔹 Phase: ${phase.name} (${phase.duration.toFixed(1)}ms)`,
+        )
 
         console.log(
             [
@@ -287,19 +291,14 @@ export class PerformanceTracker {
                         ? +r.networkDuration.toFixed(1)
                         : "—",
                 "decode(ms)":
-                    r.decodeDuration >= 0
-                        ? +r.decodeDuration.toFixed(1)
-                        : "—",
+                    r.decodeDuration >= 0 ? +r.decodeDuration.toFixed(1) : "—",
                 "download(ms)":
                     r.downloadDuration >= 0
                         ? +r.downloadDuration.toFixed(1)
                         : "—",
-                "ttfb(ms)":
-                    r.ttfb >= 0 ? +r.ttfb.toFixed(1) : "—",
+                "ttfb(ms)": r.ttfb >= 0 ? +r.ttfb.toFixed(1) : "—",
                 transfer:
-                    r.transferSize >= 0
-                        ? formatBytes(r.transferSize)
-                        : "—",
+                    r.transferSize >= 0 ? formatBytes(r.transferSize) : "—",
                 decoded:
                     r.decodedBodySize >= 0
                         ? formatBytes(r.decodedBodySize)
@@ -315,14 +314,14 @@ export class PerformanceTracker {
     // Raw data export (외부 분석용)
     // ──────────────────────────────────────────────
 
-    static exportJSON(): string {
+    public exportJSON(): string {
         const data = Object.fromEntries(
             [...this.phases.entries()].map(([key, phase]) => [key, phase]),
         )
         return JSON.stringify(data, null, 2)
     }
 
-    static clear(): void {
+    public clear(): void {
         this.phases.clear()
         this.currentPhase = null
 
@@ -338,6 +337,8 @@ export class PerformanceTracker {
         }
     }
 }
+
+export const PerformanceTracker = new PerformanceTrackerStore()
 
 function formatBytes(bytes: number): string {
     if (bytes < 0) return "—"

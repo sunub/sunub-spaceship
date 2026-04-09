@@ -1,8 +1,8 @@
-import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js"
-import type { Size } from "../utils/Size"
 import { inject, injectable } from "inversify"
+import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
 import type { DOMManager } from "@/core/DOMManger"
+import type { Size } from "../utils/Size"
 
 @injectable()
 export class CSSRenderer extends CSS2DRenderer {

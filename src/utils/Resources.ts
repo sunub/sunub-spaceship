@@ -1,3 +1,4 @@
+import { inject, injectable } from "inversify"
 import { EXRLoader } from "three/examples/jsm/Addons.js"
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -7,11 +8,10 @@ import {
     TextureLoader,
     type WebGPURenderer,
 } from "three/webgpu"
-import { HDRLoader } from "./HDRLoader.js"
-import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes.js"
 import type { Rendering } from "@/core/Rendering.js"
 import type { IResourceService } from "@/Services/IResouceService.js"
+import { HDRLoader } from "./HDRLoader.js"
 import { PerformanceTracker } from "./PerformanceTracker.js"
 
 export type LoaderType =
@@ -64,11 +64,11 @@ export class Resources implements IResourceService {
     ) {}
 
     public getItem<T = any>(name: string): T {
-        const item = this.items[name];
+        const item = this.items[name]
         if (!item) {
-            throw new Error(`Resource '${name}' not found.`);
+            throw new Error(`Resource '${name}' not found.`)
         }
-        return item as T;
+        return item as T
     }
 
     public async load(
@@ -108,9 +108,7 @@ export class Resources implements IResourceService {
             .map((source, index) => ({
                 source,
                 index,
-                priority: sourcePriority
-                    ? sourcePriority(source, index)
-                    : 0,
+                priority: sourcePriority ? sourcePriority(source, index) : 0,
             }))
             .sort((a, b) => {
                 if (a.priority === b.priority) {
@@ -217,7 +215,9 @@ export class Resources implements IResourceService {
 
     private yieldToBrowser(mode: ResourceYieldMode): Promise<void> {
         if (mode === "animationFrame") {
-            return new Promise((resolve) => requestAnimationFrame(() => resolve()))
+            return new Promise((resolve) =>
+                requestAnimationFrame(() => resolve()),
+            )
         }
 
         return Promise.resolve()
@@ -227,17 +227,15 @@ export class Resources implements IResourceService {
         requestedConcurrency: number | undefined,
         sourceCount: number,
     ): number {
-        const cpu = typeof navigator === "undefined"
-            ? 4
-            : navigator.hardwareConcurrency || 4
+        const cpu =
+            typeof navigator === "undefined"
+                ? 4
+                : navigator.hardwareConcurrency || 4
         const defaultConcurrency = Math.max(2, Math.min(cpu, 6))
         if (sourceCount <= 1) return 1
         return Math.max(
             1,
-            Math.min(
-                sourceCount,
-                requestedConcurrency ?? defaultConcurrency,
-            ),
+            Math.min(sourceCount, requestedConcurrency ?? defaultConcurrency),
         )
     }
 

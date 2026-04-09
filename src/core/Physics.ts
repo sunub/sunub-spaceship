@@ -1,6 +1,6 @@
-import * as RAPIER from "@dimforge/rapier3d-compat"
-import { PhysicsDebug } from "../Debug/PhysicsDebug"
+import type * as RAPIER from "@dimforge/rapier3d-compat"
 import { injectable } from "inversify"
+import { PhysicsDebug } from "../Debug/PhysicsDebug"
 
 const GRAVITY = { x: 0.0, y: -9.81, z: 0.0 }
 
@@ -18,12 +18,14 @@ export class Physics {
     }
 
     async initialize(): Promise<void> {
-        if(!this.rapier) {
+        if (!this.rapier) {
             throw new Error("setupRapier must be called before initialize")
         }
 
         this.world = new this.rapier.World(GRAVITY)
-        const debugParam = new URLSearchParams(window.location.search).get("debug")
+        const debugParam = new URLSearchParams(window.location.search).get(
+            "debug",
+        )
         this.debugEnabled = debugParam === "physics"
         if (this.debugEnabled) {
             this.debug = new PhysicsDebug(this.world)

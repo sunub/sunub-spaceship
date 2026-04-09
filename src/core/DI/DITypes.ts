@@ -12,7 +12,7 @@ const MODEL = {
     Birds: Symbol.for("Birds"),
     Github: Symbol.for("Github"),
     ProjectOutpost: Symbol.for("ProjectOutpost"),
-};
+}
 
 const FACTORY = {
     TreeLights: Symbol.for("TreeLightsFactory"),
@@ -29,7 +29,7 @@ const FACTORY = {
     GithubFactory: Symbol.for("GithubFactory"),
     ProjectOutpostFactory: Symbol.for("ProjectOutpostFactory"),
     FogFactory: Symbol.for("FogFactory"),
-};
+}
 
 const CONTROLLER = {
     JoyStick: Symbol.for("JoyStick"),
@@ -38,7 +38,7 @@ const CONTROLLER = {
     SpaceShipInputHandler: Symbol.for("SpaceShipInputHandler"),
     SpaceShipAnimator: Symbol.for("SpaceShipAnimator"),
     SpaceShipDebugger: Symbol.for("SpaceShipDebugger"),
-};
+}
 
 const MANAGER = {
     WorldManager: Symbol.for("WorldManager"),
@@ -47,7 +47,7 @@ const MANAGER = {
     SceneManager: Symbol.for("SceneManager"),
     ProjectManager: Symbol.for("ProjectManager"),
     EnvironmentManager: Symbol.for("EnvironmentManager"),
-};
+}
 
 const SERVICE = {
     TerrainVisibilityArea: Symbol.for("TerrainVisibilityArea"),
@@ -55,13 +55,13 @@ const SERVICE = {
     CollisionSensor: Symbol.for("CollisionSensor"),
     RaycasterService: Symbol.for("RaycasterService"),
     ResourceService: Symbol.for("ResourceService"),
-};
+}
 
 const UI = {
     TerminalOverlay: Symbol.for("TerminalOverlay"),
     Notification: Symbol.for("Notification"),
     InputIndicator: Symbol.for("InputIndicator"),
-};
+}
 
 const CORE = {
     Game: Symbol.for("Game"),
@@ -77,17 +77,17 @@ const CORE = {
     Lighting: Symbol.for("Lighting"),
     EventBus: Symbol.for("EventBus"),
     GameLoop: Symbol.for("GameLoop"),
-};
+}
 
 const EXTERNAL = {
     Rapier: Symbol.for("Rapier"),
-};
+}
 
 const UTILITY = {
     Time: Symbol.for("Time"),
     Size: Symbol.for("Size"),
     Resources: Symbol.for("Resources"),
-};
+}
 
 export const GAME_CONTEXT = {
     MODEL,
@@ -99,4 +99,4 @@ export const GAME_CONTEXT = {
     EXTERNAL,
     UTILITY,
     UI,
-};
+}

@@ -29,7 +29,6 @@
 
     --volume-input-slider-direction: to right;
 
-
     --audio-system-transition-duration: 0.8s;
     --audio-system-transition-easing: cubic-bezier(0.16, 1, 0.3, 1);
 }

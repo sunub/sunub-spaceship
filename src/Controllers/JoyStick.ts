@@ -1,3 +1,4 @@
+import { inject, injectable } from "inversify"
 import {
     add,
     color,
@@ -22,13 +23,12 @@ import {
     Vector2,
     Vector3,
 } from "three/webgpu"
-import { inject, injectable } from "inversify"
 import "reflect-metadata"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
-import type { InputManager } from "@/Inputs/InputManager"
-import type { IRaycastService } from "../Services/IRaycastService"
 import type { EventBus } from "@/core/EventBus/EventBus"
 import { GameEvents } from "@/core/EventBus/EventBusType"
+import type { InputManager } from "@/Inputs/InputManager"
+import type { IRaycastService } from "../Services/IRaycastService"
 
 @injectable()
 export class JoyStick {
@@ -69,11 +69,13 @@ export class JoyStick {
         0xffff00,
     )
 
-    private disposables: Array<() => void> = [];
+    private disposables: Array<() => void> = []
 
     constructor(
-        @inject(GAME_CONTEXT.MANAGER.InputManager) private inputManager: InputManager,
-        @inject(GAME_CONTEXT.SERVICE.RaycasterService) private raycasterService: IRaycastService,
+        @inject(GAME_CONTEXT.MANAGER.InputManager)
+        private inputManager: InputManager,
+        @inject(GAME_CONTEXT.SERVICE.RaycasterService)
+        private raycasterService: IRaycastService,
         @inject(GAME_CONTEXT.CORE.EventBus) private readonly eventBus: EventBus,
     ) {
         this.centerX = 0
@@ -192,13 +194,13 @@ export class JoyStick {
     public calculatePointerVector(shipPosition: Vector3) {
         const worldPoint = this.raycasterService.getIntersection(
             this.pointer,
-            shipPosition.y
-        );
+            shipPosition.y,
+        )
 
         if (!worldPoint) {
-            return new Vector3(0, 0, 0);
+            return new Vector3(0, 0, 0)
         }
-        return new Vector3().subVectors(worldPoint, shipPosition);
+        return new Vector3().subVectors(worldPoint, shipPosition)
     }
 
     public lock() {
@@ -210,16 +212,27 @@ export class JoyStick {
     }
 
     public setupEventBus() {
-        const unsubscribe1 = this.eventBus.on(GameEvents.TERMINAL_CLOSED, () => {
-            this.unlock();
-        })
-        const unsubscribe2 = this.eventBus.on(GameEvents.PROJECT_INTERACTION_REQUESTED, () => {
-            this.lock();
-        })
+        const unsubscribe1 = this.eventBus.on(
+            GameEvents.TERMINAL_CLOSED,
+            () => {
+                this.unlock()
+            },
+        )
+        const unsubscribe2 = this.eventBus.on(
+            GameEvents.PROJECT_INTERACTION_REQUESTED,
+            () => {
+                this.lock()
+            },
+        )
         this.disposables.push(unsubscribe1, unsubscribe2)
     }
 
-    private updateVisual(delta: number, output: Vector2, targetPosition: Vector3, relativeVector: Vector3) {
+    private updateVisual(
+        delta: number,
+        output: Vector2,
+        targetPosition: Vector3,
+        relativeVector: Vector3,
+    ) {
         const normalizedJoyStickValue = output
             .clone()
             .divideScalar(this.maxRadius)
@@ -234,10 +247,7 @@ export class JoyStick {
         }
     }
 
-    public update(
-        delta: number,
-        targetPosition: Vector3,
-    ) {
+    public update(delta: number, targetPosition: Vector3) {
         if (this.isLocked) {
             return
         }
@@ -257,9 +267,7 @@ export class JoyStick {
 
             this.plane.position.set(targetPosition.x, 0.1, targetPosition.z)
 
-            const relativeVector = this.calculatePointerVector(
-                targetPosition,
-            )
+            const relativeVector = this.calculatePointerVector(targetPosition)
 
             // Output 계산
             const output = new Vector2(relativeVector.x, relativeVector.z)
@@ -319,7 +327,9 @@ export class JoyStick {
     }
 
     public dispose() {
-        this.disposables.forEach(dispose => dispose());
-        this.disposables = []; // 배열 비우기
+        this.disposables.forEach((dispose) => {
+            dispose()
+        })
+        this.disposables = [] // 배열 비우기
     }
 }

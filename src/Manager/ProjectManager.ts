@@ -1,10 +1,10 @@
-import { Vector3 } from "three/webgpu"
-import type { ProjectOutpost } from "../Models/ProjectOutpost"
+import type { RigidBody } from "@dimforge/rapier3d-compat"
 import { inject, injectable } from "inversify"
+import { Vector3 } from "three/webgpu"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
 import type { EventBus } from "@/core/EventBus/EventBus"
 import { GameEvents } from "@/core/EventBus/EventBusType"
-import type { RigidBody } from "@dimforge/rapier3d-compat"
+import type { ProjectOutpost } from "../Models/ProjectOutpost"
 
 export interface ProjectData {
     id: string
@@ -44,8 +44,7 @@ export class ProjectManager {
         {
             id: "github",
             title: "Github Page",
-            description:
-                "sunub가 작업 중인 프로젝트들을 확인 할 수 있습니다.",
+            description: "sunub가 작업 중인 프로젝트들을 확인 할 수 있습니다.",
             url: "https://github.com/sunub",
             tags: [],
             position: new Vector3(-12, 0, 28),
@@ -53,7 +52,10 @@ export class ProjectManager {
     ]
 
     constructor(
-        @inject(GAME_CONTEXT.FACTORY.ProjectOutpostFactory) private projectOutpostFactory: (projectData: ProjectData) => ProjectOutpost,
+        @inject(GAME_CONTEXT.FACTORY.ProjectOutpostFactory)
+        private projectOutpostFactory: (
+            projectData: ProjectData,
+        ) => ProjectOutpost,
         @inject(GAME_CONTEXT.CORE.EventBus) private eventBus: EventBus,
     ) {
         this.eventBus.on(GameEvents.PLAYER_READY, (payload) => {
@@ -63,8 +65,8 @@ export class ProjectManager {
 
     public async initialize() {
         const projectObjectPromise = this.projects.map(async (data) => {
-            const outpost = this.projectOutpostFactory(data);
-            await outpost.initialize(false);
+            const outpost = this.projectOutpostFactory(data)
+            await outpost.initialize(false)
             return outpost
         })
 
@@ -84,9 +86,9 @@ export class ProjectManager {
     }
 
     private setTrackingTargets(shipBody: RigidBody) {
-        this.outposts.forEach(outpost => {
-            outpost.setTrackingTarget(shipBody);
-        });
+        this.outposts.forEach((outpost) => {
+            outpost.setTrackingTarget(shipBody)
+        })
     }
 
     public getProjects(): ProjectData[] {
@@ -99,10 +101,10 @@ export class ProjectManager {
             return
         }
         this.lastInteractionTime = now
-        const activeOutpost = this.outposts.find(outpost => outpost.isInside)
-        if(activeOutpost) {
+        const activeOutpost = this.outposts.find((outpost) => outpost.isInside)
+        if (activeOutpost) {
             this.eventBus.emit(GameEvents.PROJECT_INTERACTION_REQUESTED, {
-                project: activeOutpost.data
+                project: activeOutpost.data,
             })
         }
     }

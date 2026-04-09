@@ -1,6 +1,6 @@
-import { GAME_CONTEXT } from "@/core/DI/DITypes";
-import { inject, injectable } from "inversify";
-import { InputIndicator } from "@/UI/InputIndicator";
+import { inject, injectable } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { InputIndicator } from "@/UI/InputIndicator"
 
 @injectable()
 export class UIManager {
@@ -10,6 +10,6 @@ export class UIManager {
     ) {}
 
     public setupUISystems() {
-        this.inputIndicator.initialize();
+        this.inputIndicator.initialize()
     }
 }

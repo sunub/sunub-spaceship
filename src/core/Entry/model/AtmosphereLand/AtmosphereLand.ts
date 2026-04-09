@@ -1,27 +1,35 @@
+import { inject } from "inversify"
 import { Object3D } from "three"
 import { Color, Mesh, Vector3 } from "three/webgpu"
-import { ResourceModel } from "@/Models"
-import { AtmosphereMaterial } from "../Atmosphere/AtmosphereMaterial"
-import { inject } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import { ResourceModel } from "@/Models"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
+import { AtmosphereMaterial } from "../Atmosphere/AtmosphereMaterial"
 
 export class AtmosphereLand extends ResourceModel {
     private material!: AtmosphereMaterial
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourcesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
         position: Vector3 = new Vector3(0, 0, 0),
         scale: Vector3 = new Vector3(1, 1, 1),
     ) {
-        super(resourcesManager, sceneManager, "atmosphereLand", "", position, scale)
+        super(
+            resourcesManager,
+            sceneManager,
+            "atmosphereLand",
+            "",
+            position,
+            scale,
+        )
     }
 
     protected setupModelStructure(clonedModel: Object3D): void {
         this.modelGroup = new Object3D()
-    this.modelGroup.name = `${this.modelName}Group`
+        this.modelGroup.name = `${this.modelName}Group`
 
         const mesh = clonedModel.children[0] as Mesh
         this.mesh = mesh

@@ -1,3 +1,4 @@
+import { inject, injectable } from "inversify"
 import Stats from "three/addons/libs/stats.module.js"
 import { bloom } from "three/addons/tsl/display/BloomNode.js"
 import { pass, renderOutput } from "three/tsl" // 'pow' 제거
@@ -7,16 +8,15 @@ import {
     ReinhardToneMapping,
     WebGPURenderer,
 } from "three/webgpu"
-import type { Size } from "../utils/Size"
-import { cheapDOF } from "../Passes/CheapDOF"
-import type { Scene } from "./Scene"
-import { TweakPane } from "../Debug/TweakPane"
-import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
-import type { Camera } from "../Camera"
-import { GameEvents } from "@/core/EventBus/EventBusType"
 import type { EventBus } from "@/core/EventBus/EventBus"
 import type { ResizeEvent } from "@/core/EventBus/EventBusType"
+import { GameEvents } from "@/core/EventBus/EventBusType"
+import type { Camera } from "../Camera"
+import { TweakPane } from "../Debug/TweakPane"
+import { cheapDOF } from "../Passes/CheapDOF"
+import type { Size } from "../utils/Size"
+import type { Scene } from "./Scene"
 
 @injectable()
 export class Rendering {
@@ -33,14 +33,14 @@ export class Rendering {
     private blurPanel: any
     private camera!: Camera
 
-    private disposables: Array<() => void> = [];
+    private disposables: Array<() => void> = []
 
     constructor(
         @inject(GAME_CONTEXT.UTILITY.Size) private size: Size,
         @inject(GAME_CONTEXT.CORE.Scene) private scene: Scene,
         @inject(GAME_CONTEXT.CORE.EventBus) private readonly eventBus: EventBus,
     ) {
-        this.setupResizeEvent();
+        this.setupResizeEvent()
     }
 
     public setCamera(camera: Camera) {
@@ -253,7 +253,10 @@ export class Rendering {
     }
 
     public setupResizeEvent() {
-        const unsubscribe = this.eventBus.on(GameEvents.RESIZE, (resizeEvent: ResizeEvent) => this.resize(resizeEvent))
+        const unsubscribe = this.eventBus.on(
+            GameEvents.RESIZE,
+            (resizeEvent: ResizeEvent) => this.resize(resizeEvent),
+        )
         this.disposables.push(unsubscribe)
     }
 
@@ -266,8 +269,10 @@ export class Rendering {
     }
 
     public dispose() {
-        this.disposables.forEach(dispose => dispose());
-        this.disposables = [];
+        this.disposables.forEach((dispose) => {
+            dispose()
+        })
+        this.disposables = []
     }
 
     public async update() {

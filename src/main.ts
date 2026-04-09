@@ -1,15 +1,27 @@
-import "reflect-metadata";
-import { DIContainer } from "./core/DI/inversify.config";
-import { GAME_CONTEXT } from "./core/DI/DITypes";
-import { GameBootstrapper } from "./core/GameBootstrapper";
-import { PerformanceTracker } from "./utils/PerformanceTracker";
+import "reflect-metadata"
+import { GAME_CONTEXT } from "./core/DI/DITypes"
+import { DIContainer } from "./core/DI/inversify.config"
+import type { GameBootstrapper } from "./core/GameBootstrapper"
+import { PerformanceTracker } from "./utils/PerformanceTracker"
 
 const isTruthy = (value: string | null | undefined): boolean | null => {
     if (value === null) return null
     if (value === undefined) return null
     const normalized = value.trim().toLowerCase()
-    if (normalized === "1" || normalized === "true" || normalized === "on" || normalized === "yes") return true
-    if (normalized === "0" || normalized === "false" || normalized === "off" || normalized === "no") return false
+    if (
+        normalized === "1" ||
+        normalized === "true" ||
+        normalized === "on" ||
+        normalized === "yes"
+    )
+        return true
+    if (
+        normalized === "0" ||
+        normalized === "false" ||
+        normalized === "off" ||
+        normalized === "no"
+    )
+        return false
     return null
 }
 
@@ -35,7 +47,9 @@ const enableOrDisablePerformanceTracker = () =>
 
 const main = async () => {
     enableOrDisablePerformanceTracker()
-    const gameBootstrapper = DIContainer.get<GameBootstrapper>(GAME_CONTEXT.CORE.GameBootstrapper)
+    const gameBootstrapper = DIContainer.get<GameBootstrapper>(
+        GAME_CONTEXT.CORE.GameBootstrapper,
+    )
     await gameBootstrapper.run()
 }
 

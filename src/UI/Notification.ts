@@ -26,8 +26,12 @@ export class Notification {
             this.messageElement.innerText = message
         }
 
-        document.querySelector(".notification-overlay")?.classList.remove("hidden")
-        document.querySelector(".notification-overlay")?.classList.add("visible")
+        document
+            .querySelector(".notification-overlay")
+            ?.classList.remove("hidden")
+        document
+            .querySelector(".notification-overlay")
+            ?.classList.add("visible")
 
         if (duration > 0) {
             this.timer = window.setTimeout(() => {
@@ -37,7 +41,9 @@ export class Notification {
     }
 
     public hide() {
-        document.querySelector(".notification-overlay")?.classList.remove("visible")
+        document
+            .querySelector(".notification-overlay")
+            ?.classList.remove("visible")
         document.querySelector(".notification-overlay")?.classList.add("hidden")
     }
 }

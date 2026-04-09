@@ -1,5 +1,5 @@
-import EventEmitter from "./EventEmitter"
 import { injectable } from "inversify"
+import EventEmitter from "./EventEmitter"
 
 @injectable()
 export class Size extends EventEmitter {

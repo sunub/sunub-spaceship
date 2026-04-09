@@ -1,18 +1,18 @@
-import { inject, injectable } from "inversify";
-import { GAME_CONTEXT } from "@/core/DI/DITypes";
-import { GameEvents } from "@/core/EventBus/EventBusType";
-import type { WorldManager } from "../Manager/WorldManager";
-import type { ProjectManager } from "../Manager/ProjectManager";
-import type { EnvironmentManager } from "../Manager/EnvironmentManager";
-import type { EventBus } from "@/core/EventBus/EventBus";
-import type { SpaceShip } from "../Models";
-import type { InputManager } from "@/Inputs/InputManager";
-import type { InputIndicator } from "../UI/InputIndicator";
-import type { Notification } from "../UI/Notification";
-import type { TerminalOverlay } from "../UI/TerminalOverlay";
-import type { SpaceShipCameraController } from "../Controllers/SpaceShipCameraController";
-import type { Audio } from "../Environment/Audio";
-import type Time from "@/utils/Time";
+import { inject, injectable } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { EventBus } from "@/core/EventBus/EventBus"
+import { GameEvents } from "@/core/EventBus/EventBusType"
+import type { InputManager } from "@/Inputs/InputManager"
+import type Time from "@/utils/Time"
+import type { SpaceShipCameraController } from "../Controllers/SpaceShipCameraController"
+import type { Audio } from "../Environment/Audio"
+import type { EnvironmentManager } from "../Manager/EnvironmentManager"
+import type { ProjectManager } from "../Manager/ProjectManager"
+import type { WorldManager } from "../Manager/WorldManager"
+import type { SpaceShip } from "../Models"
+import type { InputIndicator } from "../UI/InputIndicator"
+import type { Notification } from "../UI/Notification"
+import type { TerminalOverlay } from "../UI/TerminalOverlay"
 
 /**
  * Game 클래스는 게임 라이프사이클만 조율하는 thin orchestrator입니다.
@@ -28,9 +28,9 @@ import type Time from "@/utils/Time";
  */
 @injectable()
 export class Game {
-    public isReady = false;
-    public spaceShip!: SpaceShip;
-    private disposables: (() => void)[] = [];
+    public isReady = false
+    public spaceShip!: SpaceShip
+    private disposables: (() => void)[] = []
 
     constructor(
         @inject(GAME_CONTEXT.MANAGER.WorldManager)
@@ -62,12 +62,10 @@ export class Game {
     /**
      * Phase 3a: 월드 오브젝트와 SpaceShip을 생성하고 초기화합니다.
      */
-    public async prepareGameObjects(
-        options?: {
-            skipTerrainInitialization?: boolean
-            stageSceneObjects?: boolean
-        },
-    ): Promise<void> {
+    public async prepareGameObjects(options?: {
+        skipTerrainInitialization?: boolean
+        stageSceneObjects?: boolean
+    }): Promise<void> {
         const stageSceneObjects = options?.stageSceneObjects ?? false
 
         await Promise.all([
@@ -77,18 +75,18 @@ export class Game {
                 visible: !stageSceneObjects,
             }),
             this.projectManager.initialize(),
-        ]);
+        ])
 
         this.projectManager.setOutpostsVisible(!stageSceneObjects)
         if (!stageSceneObjects) {
             this.projectManager.attachPreparedOutposts()
         }
 
-        const spaceShip = this.spaceShipFactory();
-        await spaceShip.initialize(!stageSceneObjects);
+        const spaceShip = this.spaceShipFactory()
+        await spaceShip.initialize(!stageSceneObjects)
         spaceShip.setVisible(!stageSceneObjects)
-        this.worldManager.addGameObject(spaceShip);
-        this.spaceShip = spaceShip;
+        this.worldManager.addGameObject(spaceShip)
+        this.spaceShip = spaceShip
     }
 
     public revealPreparedGameObjects(): void {
@@ -104,9 +102,9 @@ export class Game {
      * 상호작용 브리지를 설정합니다.
      */
     public setupEnvironment(): void {
-        this.environmentManager.setup();
-        this.inputIndicator.initialize();
-        this.setupInteractionBridge();
+        this.environmentManager.setup()
+        this.inputIndicator.initialize()
+        this.setupInteractionBridge()
     }
 
     /**
@@ -115,31 +113,33 @@ export class Game {
      * 알림 표시 후 SpaceShip 조작을 활성화합니다.
      */
     public async startGame(): Promise<void> {
-        this.isReady = true;
-        this.time.reset(performance.now());
+        this.isReady = true
+        this.time.reset(performance.now())
 
         if (this.spaceShip?.rigidBody) {
             this.eventBus.emit(GameEvents.PLAYER_READY, {
                 spaceshipRigidBody: this.spaceShip.rigidBody,
-            });
+            })
         }
 
-        this.audio.play("background");
-        this.showControlGroup();
+        if (process.env.NODE_ENV !== "development") {
+            this.audio.play("background")
+            this.showControlGroup()
+        }
 
         if (this.spaceShip?.shipPivot) {
             await this.spaceShipCameraController.transitionToFollow(
                 this.spaceShip.shipPivot,
                 this.spaceShip.flightCameraOffset,
                 2.0,
-            );
+            )
         }
 
         this.notification.show(
             "조작키를 사용하여 우주선을 조작해 프로젝트 영역을 찾아주세요",
             5000,
-        );
-        this.spaceShip.unlock();
+        )
+        this.spaceShip.unlock()
     }
 
     /**
@@ -155,42 +155,46 @@ export class Game {
         const unsubInteract = this.inputManager.subscribe(
             "Interact",
             (isPressed) => {
-                if (!isPressed) return;
+                if (!isPressed) return
 
                 if (this.terminalOverlay.isOpen) {
-                    this.terminalOverlay.hide();
-                    return;
+                    this.terminalOverlay.hide()
+                    return
                 }
 
-                this.projectManager.handleInteraction();
+                this.projectManager.handleInteraction()
             },
-        );
-        this.disposables.push(unsubInteract);
+        )
+        this.disposables.push(unsubInteract)
 
         const unsubOpen = this.eventBus.on(GameEvents.TERMINAL_OPENED, () => {
-            this.spaceShip?.lock();
-        });
-        this.disposables.push(unsubOpen);
+            this.spaceShip?.lock()
+        })
+        this.disposables.push(unsubOpen)
 
         const unsubClose = this.eventBus.on(GameEvents.TERMINAL_CLOSED, () => {
-            this.spaceShip?.unlock();
-        });
-        this.disposables.push(unsubClose);
+            this.spaceShip?.unlock()
+        })
+        this.disposables.push(unsubClose)
     }
 
     private showControlGroup(): void {
-        const controlGroup = document.querySelector<HTMLElement>(".control-group");
+        const controlGroup =
+            document.querySelector<HTMLElement>(".control-group")
         if (controlGroup) {
-            controlGroup.style.display = "flex";
+            controlGroup.style.display = "flex"
             requestAnimationFrame(() => {
-                controlGroup.style.opacity = "var(--control-group-opacity)";
-                controlGroup.style.visibility = "var(--control-group-visibility)";
-            });
+                controlGroup.style.opacity = "var(--control-group-opacity)"
+                controlGroup.style.visibility =
+                    "var(--control-group-visibility)"
+            })
         }
     }
 
     public dispose(): void {
-        this.disposables.forEach((d) => d());
-        this.disposables = [];
+        this.disposables.forEach((d) => {
+            d()
+        })
+        this.disposables = []
     }
 }

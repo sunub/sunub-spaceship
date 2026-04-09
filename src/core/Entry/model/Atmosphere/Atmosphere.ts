@@ -1,17 +1,17 @@
-import { Object3D } from "three/webgpu"
-import { Color, DoubleSide, Mesh, Vector3 } from "three/webgpu"
-import { ResourceModel } from "@/Models"
-import { AtmosphereMaterial } from "./AtmosphereMaterial"
 import { inject } from "inversify"
+import { Color, DoubleSide, Mesh, Object3D, Vector3 } from "three/webgpu"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import { ResourceModel } from "@/Models"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
+import { AtmosphereMaterial } from "./AtmosphereMaterial"
 
 export class Atmosphere extends ResourceModel {
     private material!: AtmosphereMaterial
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourcesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
         position: Vector3 = new Vector3(0, 0, 0),
         scale: Vector3 = new Vector3(1, 1, 1),

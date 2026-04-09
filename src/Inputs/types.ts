@@ -33,21 +33,21 @@ export type ActionType =
     | "Interact"
 
 export interface TouchState {
-    isDown: boolean;
-    x: number;
-    y: number;
-    screenX: number;
-    screenY: number;
+    isDown: boolean
+    x: number
+    y: number
+    screenX: number
+    screenY: number
 }
 
 export interface MouseState {
-    isDown: boolean;
-    x: number;
-    y: number;
-    deltaX: number;
-    deltaY: number;
-    screenX: number;
-    screenY: number;
+    isDown: boolean
+    x: number
+    y: number
+    deltaX: number
+    deltaY: number
+    screenX: number
+    screenY: number
 }
 
 export type InputConfig = Record<ActionType, KeyboardKeys[]>

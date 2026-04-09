@@ -39,7 +39,10 @@ export class LoadingAnimation implements IGameObject {
 
     public async initialize() {
         this.geometry = new SphereGeometry(0.05, 32, 32)
-        const material = new MeshBasicMaterial({ color: 0x00ff00, transparent: true })
+        const material = new MeshBasicMaterial({
+            color: 0x00ff00,
+            transparent: true,
+        })
         this.sphere = new Mesh(this.geometry, material)
 
         this.sphere.position.y = 1.5

@@ -20,13 +20,8 @@ import {
     vec2,
     vec4,
 } from "three/tsl"
-import {
-    MeshBasicNodeMaterial,
-    Vector2,
-    Vector3,
-    Node,
-} from "three/webgpu"
 import type { UniformNode } from "three/webgpu"
+import { MeshBasicNodeMaterial, Node, Vector2, Vector3 } from "three/webgpu"
 
 interface PlanetMaterialProps {
     uTime?: Node | number
@@ -71,15 +66,25 @@ export class PlanetMaterial extends MeshBasicNodeMaterial {
         } = props
 
         // If it's already a node, use nodeObject to wrap it, otherwise create a new uniform
-        this.uTime = (uTime instanceof Node ? nodeObject(uTime) : uniform(uTime)) as any
-        this.fresnelStrength = (fresnelStrength instanceof Node ? nodeObject(fresnelStrength) : uniform(fresnelStrength)) as any
+        this.uTime = (
+            uTime instanceof Node ? nodeObject(uTime) : uniform(uTime)
+        ) as any
+        this.fresnelStrength = (
+            fresnelStrength instanceof Node
+                ? nodeObject(fresnelStrength)
+                : uniform(fresnelStrength)
+        ) as any
 
         this.uColorStop1 = uniform(uColorStop1)
         this.uColorStop2 = uniform(uColorStop2)
         this.uColor1 = uniform(uColor1)
         this.uColor2 = uniform(uColor2)
         this.uEmissionColor = uniform(uEmissionColor)
-        this.uEmissionStrength = (uEmissionStrength instanceof Node ? nodeObject(uEmissionStrength) : uniform(uEmissionStrength)) as any
+        this.uEmissionStrength = (
+            uEmissionStrength instanceof Node
+                ? nodeObject(uEmissionStrength)
+                : uniform(uEmissionStrength)
+        ) as any
 
         this.opacityNode = opacityNode
 

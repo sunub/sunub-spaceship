@@ -1,35 +1,36 @@
 import { EventEmitter } from "node:events"
+import { inject, injectable } from "inversify"
 import { Vector3 } from "three/webgpu"
-
+import type { EventBus } from "@/core/EventBus/EventBus"
+import { GameEvents } from "@/core/EventBus/EventBusType"
+import type { ResourceModel } from "@/Models"
+import type { IResourceService } from "@/Services/IResouceService"
+import type { ISceneManager } from "@/Services/ISceneManager"
+import { GAME_CONTEXT } from "../DI/DITypes"
 import { Atmosphere } from "./model/Atmosphere"
 import { AtmosphereLand } from "./model/AtmosphereLand/AtmosphereLand"
 import { AtmosphereTreeLights } from "./model/AtmosphereTreeLights"
 import { Background } from "./model/Background"
 import { LoadingAnimation } from "./model/LoadingAnimation"
 import { Planet } from "./model/Planet"
-import { inject, injectable } from "inversify"
-import { GAME_CONTEXT } from "../DI/DITypes"
-import type { ISceneManager } from "@/Services/ISceneManager"
-import type { IResourceService } from "@/Services/IResouceService"
-import type { ResourceModel } from "@/Models"
-import type { EventBus } from "@/core/EventBus/EventBus"
-import { GameEvents } from "@/core/EventBus/EventBusType"
 
 @injectable()
 export class Entry extends EventEmitter {
     public loadingAnimation!: LoadingAnimation
-    private gameLoader!: HTMLProgressElement | null;
-    private loadingPercentage!: HTMLParagraphElement | null;
-    private assetsRemainingLabel!: HTMLParagraphElement | null;
-    private assetsLoadedCount!: HTMLParagraphElement | null;
-    private loadingText!: HTMLParagraphElement | null;
+    private gameLoader!: HTMLProgressElement | null
+    private loadingPercentage!: HTMLParagraphElement | null
+    private assetsRemainingLabel!: HTMLParagraphElement | null
+    private assetsLoadedCount!: HTMLParagraphElement | null
+    private loadingText!: HTMLParagraphElement | null
     private _sceneObjects: Array<ResourceModel> = []
     private pendingProgress: { current: number; total: number } | null = null
     private progressUpdateQueued = false
 
     constructor(
-        @inject(GAME_CONTEXT.MANAGER.SceneManager) private sceneManager: ISceneManager,
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) private resourceService: IResourceService,
+        @inject(GAME_CONTEXT.MANAGER.SceneManager)
+        private sceneManager: ISceneManager,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        private resourceService: IResourceService,
         @inject(GAME_CONTEXT.CORE.EventBus) private eventBus: EventBus,
     ) {
         super()
@@ -39,11 +40,24 @@ export class Entry extends EventEmitter {
         const button = document.getElementById("entry-button")
         if (button) {
             button.removeAttribute("disabled")
+
+            if (process.env.NODE_ENV === "development") {
+                this.startDevelopmentMode(callback)
+                return
+            }
+
             button.addEventListener("click", async () => {
                 button.setAttribute("disabled", "true")
                 await callback()
             })
         }
+    }
+
+    private async startDevelopmentMode(callback: () => Promise<void>) {
+        console.log("🚀 Starting in development mode...")
+        // 개발 모드에서는 Start 버튼을 자동으로 클릭하여 빠르게 진입할 수 있도록 합니다.
+        // 실제 게임에서는 사용자가 Start 버튼을 클릭해야 진입하도록 유지됩니다.
+        await callback()
     }
 
     public updateProgressUI(current: number, total: number) {
@@ -57,22 +71,35 @@ export class Entry extends EventEmitter {
 
     private flushProgressUI() {
         if (!this.gameLoader) {
-            this.gameLoader = document.getElementById("game-loader") as HTMLProgressElement
+            this.gameLoader = document.getElementById(
+                "game-loader",
+            ) as HTMLProgressElement
         }
         if (!this.loadingPercentage) {
-            this.loadingPercentage = document.getElementById("loading-percentage") as HTMLParagraphElement
+            this.loadingPercentage = document.getElementById(
+                "loading-percentage",
+            ) as HTMLParagraphElement
         }
         if (!this.assetsRemainingLabel) {
-            this.assetsRemainingLabel = document.getElementById("assets-remaining-label") as HTMLParagraphElement
+            this.assetsRemainingLabel = document.getElementById(
+                "assets-remaining-label",
+            ) as HTMLParagraphElement
         }
         if (!this.assetsLoadedCount) {
-            this.assetsLoadedCount = document.getElementById("assets-loaded-count") as HTMLParagraphElement
+            this.assetsLoadedCount = document.getElementById(
+                "assets-loaded-count",
+            ) as HTMLParagraphElement
         }
         if (!this.loadingText) {
-            this.loadingText = document.getElementById("loading-txt") as HTMLParagraphElement
+            this.loadingText = document.getElementById(
+                "loading-txt",
+            ) as HTMLParagraphElement
         }
 
-        const { current, total } = this.pendingProgress ?? { current: 0, total: 0 }
+        const { current, total } = this.pendingProgress ?? {
+            current: 0,
+            total: 0,
+        }
         this.progressUpdateQueued = false
         this.pendingProgress = null
 
@@ -125,7 +152,9 @@ export class Entry extends EventEmitter {
         }
 
         if (!this.loadingText) {
-            this.loadingText = document.getElementById("loading-txt") as HTMLParagraphElement
+            this.loadingText = document.getElementById(
+                "loading-txt",
+            ) as HTMLParagraphElement
         }
 
         if (this.loadingText) {
@@ -138,10 +167,30 @@ export class Entry extends EventEmitter {
         const objects_scale = new Vector3(0.5, 0.5, 0.5)
 
         this._sceneObjects = [
-            new Planet(this.resourceService, this.sceneManager, objects_pos, objects_scale),
-            new Atmosphere(this.resourceService, this.sceneManager, objects_pos, objects_scale),
-            new AtmosphereLand(this.resourceService, this.sceneManager, objects_pos, objects_scale),
-            new AtmosphereTreeLights(this.resourceService, this.sceneManager, objects_pos, objects_scale),
+            new Planet(
+                this.resourceService,
+                this.sceneManager,
+                objects_pos,
+                objects_scale,
+            ),
+            new Atmosphere(
+                this.resourceService,
+                this.sceneManager,
+                objects_pos,
+                objects_scale,
+            ),
+            new AtmosphereLand(
+                this.resourceService,
+                this.sceneManager,
+                objects_pos,
+                objects_scale,
+            ),
+            new AtmosphereTreeLights(
+                this.resourceService,
+                this.sceneManager,
+                objects_pos,
+                objects_scale,
+            ),
             new Background(this.resourceService, this.sceneManager),
         ]
     }
@@ -164,25 +213,37 @@ export class Entry extends EventEmitter {
         // EventBus를 통해 GameLoop에 Entry dispose 알림 (순환 의존 방지)
         this.eventBus.emit(GameEvents.ENTRY_DISPOSED, undefined)
 
-        const entrySceneDOM = document.querySelector(".entry-screen") as HTMLElement | null
+        const entrySceneDOM = document.querySelector(
+            ".entry-screen",
+        ) as HTMLElement | null
         if (entrySceneDOM) {
             // CSS transition으로 페이드 아웃 후 DOM 제거 (대규모 reflow 분산)
             entrySceneDOM.style.transition = "opacity 0.3s ease-out"
             entrySceneDOM.style.opacity = "0"
             entrySceneDOM.style.pointerEvents = "none"
-            entrySceneDOM.addEventListener("transitionend", () => {
-                entrySceneDOM.remove()
-            }, { once: true })
+            entrySceneDOM.addEventListener(
+                "transitionend",
+                () => {
+                    entrySceneDOM.remove()
+                },
+                { once: true },
+            )
         }
 
-        const loadingZone = document.querySelector("#loading-zone") as HTMLElement | null
+        const loadingZone = document.querySelector(
+            "#loading-zone",
+        ) as HTMLElement | null
         if (loadingZone) {
             loadingZone.style.transition = "opacity 0.3s ease-out"
             loadingZone.style.opacity = "0"
             loadingZone.style.pointerEvents = "none"
-            loadingZone.addEventListener("transitionend", () => {
-                loadingZone.remove()
-            }, { once: true })
+            loadingZone.addEventListener(
+                "transitionend",
+                () => {
+                    loadingZone.remove()
+                },
+                { once: true },
+            )
         }
 
         this.removeAllListeners()

@@ -1,8 +1,8 @@
-import { GAME_CONTEXT } from "@/core/DI/DITypes"
-import EventEmitter from "./EventEmitter"
 import { inject, injectable } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
 import type { EventBus } from "@/core/EventBus/EventBus"
 import { GameEvents } from "@/core/EventBus/EventBusType"
+import EventEmitter from "./EventEmitter"
 
 @injectable()
 export default class Time extends EventEmitter {
@@ -12,10 +12,10 @@ export default class Time extends EventEmitter {
     delta: number
     private isRunning = false
     private animationId: number | null = null
-    private disposables: Array<() => void> = [];
+    private disposables: Array<() => void> = []
 
     constructor(
-        @inject(GAME_CONTEXT.CORE.EventBus) private eventBus: EventBus
+        @inject(GAME_CONTEXT.CORE.EventBus) private eventBus: EventBus,
     ) {
         super()
 
@@ -77,12 +77,18 @@ export default class Time extends EventEmitter {
     }
 
     public setupVisibilityEvents() {
-        const unscribeHidden = this.eventBus.on(GameEvents.GAME_VISIBILITY_HIDDEN, () => {
-            this.stopGameLoop()
-        })
-        const unscribeVisible = this.eventBus.on(GameEvents.GAME_VISIBILITY_VISIBLE, () => {
-            this.startGameLoop()
-        })
+        const unscribeHidden = this.eventBus.on(
+            GameEvents.GAME_VISIBILITY_HIDDEN,
+            () => {
+                this.stopGameLoop()
+            },
+        )
+        const unscribeVisible = this.eventBus.on(
+            GameEvents.GAME_VISIBILITY_VISIBLE,
+            () => {
+                this.startGameLoop()
+            },
+        )
 
         this.disposables.push(unscribeHidden, unscribeVisible)
     }

@@ -1,12 +1,12 @@
-import { inject, injectable } from "inversify";
-import { GAME_CONTEXT } from "@/core/DI/DITypes";
-import { FixedNightFog } from "../Environment/Fog";
-import type { Scene } from "../core/Scene";
+import { inject, injectable } from "inversify"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { Scene } from "../core/Scene"
+import { FixedNightFog } from "../Environment/Fog"
 
 @injectable()
 export class EnvironmentManager {
-    public fog!: FixedNightFog;
-    private initialized = false;
+    public fog!: FixedNightFog
+    private initialized = false
 
     constructor(
         @inject(GAME_CONTEXT.CORE.Scene)
@@ -18,9 +18,9 @@ export class EnvironmentManager {
      * 멱등성 보장: 여러 번 호출되어도 한 번만 초기화됩니다.
      */
     public setup(): void {
-        if (this.initialized) return;
-        this.fog = new FixedNightFog(this.scene);
-        this.initialized = true;
+        if (this.initialized) return
+        this.fog = new FixedNightFog(this.scene)
+        this.initialized = true
     }
 
     public dispose(): void {

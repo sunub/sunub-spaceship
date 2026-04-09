@@ -1,4 +1,5 @@
 import type { FolderApi } from "@tweakpane/core"
+import { inject, injectable } from "inversify"
 import { color, float, uniform } from "three/tsl"
 import {
     BufferGeometry,
@@ -13,11 +14,10 @@ import {
     Spherical,
     Vector3,
 } from "three/webgpu"
-import { TweakPane } from "../Debug/TweakPane"
-import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
-import { Scene } from "./Scene"
 import type { Camera } from "../Camera"
+import { TweakPane } from "../Debug/TweakPane"
+import type { Scene } from "./Scene"
 
 const NIGHT_PRESET = {
     lightColor: new Color("#6f8dee"),
@@ -90,7 +90,10 @@ export class Lighting {
     private directionHelper!: Mesh
     private shadowHelper!: CameraHelper
 
-    constructor(@inject(GAME_CONTEXT.CORE.Scene) private scene: Scene, @inject(GAME_CONTEXT.CORE.Camera) private camera: Camera) { }
+    constructor(
+        @inject(GAME_CONTEXT.CORE.Scene) private scene: Scene,
+        @inject(GAME_CONTEXT.CORE.Camera) private camera: Camera,
+    ) {}
 
     public initialize() {
         // 1. 초기값 설정 (Default Settings)

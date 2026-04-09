@@ -1,19 +1,22 @@
-
 import { inject, injectable } from "inversify"
-import { GAME_CONTEXT } from "@/core/DI/DITypes"
-import type Time from "@/utils/Time"
-import type { Physics } from "@/core/Physics"
-import type { Rendering } from "@/core/Rendering"
-import type { WorldManager } from "@/Manager/WorldManager"
-import type { ProjectManager } from "@/Manager/ProjectManager"
-import type { Lighting } from "@/core/Lighting"
-import type { CSSRenderer } from "@/core/CSSRenderer"
-import type { Scene } from "@/core/Scene"
 import type { Camera } from "@/Camera"
+import type { CSSRenderer } from "@/core/CSSRenderer"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
 import type { Entry } from "@/core/Entry"
 import type { EventBus } from "@/core/EventBus/EventBus"
 import { GameEvents } from "@/core/EventBus/EventBusType"
+import type { Lighting } from "@/core/Lighting"
+import type { Physics } from "@/core/Physics"
+import type { Rendering } from "@/core/Rendering"
+import type { Scene } from "@/core/Scene"
+import type { ProjectManager } from "@/Manager/ProjectManager"
+import type { WorldManager } from "@/Manager/WorldManager"
 import type { TerrainVisibilityArea } from "@/Services/TerrainVisibilityArea"
+import type Time from "@/utils/Time"
+import type {
+    GameLoopPhaseContext,
+    GameLoopPhaseDefinition,
+} from "./GameLoopPhase"
 
 export type GameLoopMode = "entry" | "transition" | "full"
 
@@ -24,20 +27,24 @@ export class GameLoop {
     private shouldResetTime = false
     private entryDisposed = false
     private mode: GameLoopMode = "entry"
+    private readonly phases: ReadonlyArray<GameLoopPhaseDefinition>
 
     constructor(
         @inject(GAME_CONTEXT.UTILITY.Time) private time: Time,
         @inject(GAME_CONTEXT.CORE.Physics) private physics: Physics,
         @inject(GAME_CONTEXT.CORE.Rendering) private rendering: Rendering,
-        @inject(GAME_CONTEXT.MANAGER.WorldManager) private worldManager: WorldManager,
-        @inject(GAME_CONTEXT.MANAGER.ProjectManager) private projectManager: ProjectManager,
+        @inject(GAME_CONTEXT.MANAGER.WorldManager)
+        private worldManager: WorldManager,
+        @inject(GAME_CONTEXT.MANAGER.ProjectManager)
+        private projectManager: ProjectManager,
         @inject(GAME_CONTEXT.CORE.Lighting) private lighting: Lighting,
         @inject(GAME_CONTEXT.CORE.CSSRenderer) private cssRenderer: CSSRenderer,
         @inject(GAME_CONTEXT.CORE.Scene) private scene: Scene,
         @inject(GAME_CONTEXT.CORE.Camera) private camera: Camera,
         @inject(GAME_CONTEXT.CORE.Entry) private entry: Entry,
         @inject(GAME_CONTEXT.CORE.EventBus) private eventBus: EventBus,
-        @inject(GAME_CONTEXT.SERVICE.TerrainVisibilityArea) private terrainVisibilityArea: TerrainVisibilityArea,
+        @inject(GAME_CONTEXT.SERVICE.TerrainVisibilityArea)
+        private terrainVisibilityArea: TerrainVisibilityArea,
     ) {
         this.eventBus.on(GameEvents.GAME_VISIBILITY_VISIBLE, () => {
             this.resetTime()
@@ -45,6 +52,7 @@ export class GameLoop {
         this.eventBus.on(GameEvents.ENTRY_DISPOSED, () => {
             this.markEntryDisposed()
         })
+        this.phases = this.createPhases()
     }
 
     public start(mode: GameLoopMode = "entry") {
@@ -95,54 +103,117 @@ export class GameLoop {
         }
         this.isRendering = true
 
-        // Delta limiting (Max 20FPS)
-        const deltaTime = Math.min(this.time.delta * 0.001, 0.05)
-        const isFullMode = this.mode === "full"
+        const context = this.createPhaseContext()
 
         try {
-            this.lighting.update()
-
-            // Physics Phase: 전환 중이 아닐 때만 전체 물리 스텝 실행
-            if (isFullMode && !this.camera.isTransitioning) {
-                this.worldManager.updatePhysics(deltaTime)
-                this.physics.step(deltaTime)
-            }
-
-            // Entry Phase: dispose 후에는 스킵 (LoadingAnimation GPU 업로드 제거)
-            if (!this.entryDisposed) {
-                this.entry.update(deltaTime)
-            }
-
-            // Visibility Phase: 엔트리 단계에서는 비활성화하여 로딩 중 메인 스레드 경합 제거
-            if (isFullMode) {
-                this.terrainVisibilityArea.update(deltaTime)
-            }
-
-            // Logic & Visual Phase: Sync visuals to physics bodies, animate, etc.
-            if (isFullMode) {
-                this.worldManager.update(deltaTime)
-                this.projectManager.update(deltaTime)
-            }
-
-            // Camera Phase: 전환 보간을 GameLoop 틱에서 직접 수행 (GSAP rAF 이중 실행 제거)
-            if (this.camera.isTransitioning) {
-                this.camera.updateTransition(deltaTime)
-            } else {
-                this.camera.update()
-            }
-
-            if (isFullMode) {
-                this.physics.update() // Update Debug Visuals
-            }
-            await this.rendering.update()
-
-            if (isFullMode && this.cssRenderer && this.scene && this.camera.instance) {
-                await this.cssRenderer.render(this.scene, this.camera.instance)
-            }
+            await this.runPhases(context)
         } catch (error) {
             console.error("Game Loop Error:", error)
         } finally {
             this.isRendering = false
+        }
+    }
+
+    private createPhaseContext(): GameLoopPhaseContext {
+        return {
+            // Delta limiting (Max 20FPS)
+            deltaTime: Math.min(this.time.delta * 0.001, 0.05),
+            isFullMode: this.mode === "full",
+            isTransitioning: this.camera.isTransitioning,
+            entryDisposed: this.entryDisposed,
+        }
+    }
+
+    private createPhases(): ReadonlyArray<GameLoopPhaseDefinition> {
+        return [
+            {
+                name: "lighting",
+                run: () => {
+                    this.lighting.update()
+                },
+            },
+            {
+                name: "physics",
+                shouldRun: ({ isFullMode, isTransitioning }) =>
+                    isFullMode && !isTransitioning,
+                run: ({ deltaTime }) => {
+                    this.worldManager.updatePhysics(deltaTime)
+                    this.physics.step(deltaTime)
+                },
+            },
+            {
+                name: "entry",
+                shouldRun: ({ entryDisposed }) => !entryDisposed,
+                run: ({ deltaTime }) => {
+                    this.entry.update(deltaTime)
+                },
+            },
+            {
+                name: "logic",
+                shouldRun: ({ isFullMode }) => isFullMode,
+                run: ({ deltaTime }) => {
+                    this.worldManager.update(deltaTime)
+                    this.projectManager.update(deltaTime)
+                },
+            },
+            {
+                name: "camera",
+                run: ({ deltaTime, isTransitioning }) => {
+                    if (isTransitioning) {
+                        this.camera.updateTransition(deltaTime)
+                    } else {
+                        this.camera.update()
+                    }
+                },
+            },
+            {
+                name: "visibility",
+                shouldRun: ({ isFullMode }) => isFullMode,
+                run: ({ deltaTime }) => {
+                    this.terrainVisibilityArea.update(deltaTime)
+                },
+            },
+            {
+                name: "visibilitySync",
+                shouldRun: ({ isFullMode }) => isFullMode,
+                run: () => {
+                    this.worldManager.syncVisibilityCulling()
+                },
+            },
+            {
+                name: "physicsDebug",
+                shouldRun: ({ isFullMode }) => isFullMode,
+                run: () => {
+                    this.physics.update()
+                },
+            },
+            {
+                name: "render",
+                run: async () => {
+                    await this.rendering.update()
+                },
+            },
+            {
+                name: "cssRender",
+                shouldRun: ({ isFullMode }) =>
+                    isFullMode &&
+                    Boolean(
+                        this.cssRenderer && this.scene && this.camera.instance,
+                    ),
+                run: () => {
+                    this.cssRenderer.render(this.scene, this.camera.instance)
+                },
+            },
+        ]
+    }
+
+    private async runPhases(context: GameLoopPhaseContext): Promise<void> {
+        for (const phase of this.phases) {
+            if (phase.shouldRun && !phase.shouldRun(context)) {
+                continue
+            }
+
+            await phase.run(context)
         }
     }
 }

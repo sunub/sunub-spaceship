@@ -141,6 +141,32 @@ export const textureSources = [
             source.wrapT = ClampToEdgeWrapping
         },
     ],
+    [
+        "wasdIconTexture",
+        "png",
+        "/icons/wasdIcon.png",
+        (source: Texture) => {
+            source.colorSpace = SRGBColorSpace
+            source.minFilter = LinearFilter
+            source.magFilter = LinearFilter
+            source.generateMipmaps = false
+            source.wrapS = ClampToEdgeWrapping
+            source.wrapT = ClampToEdgeWrapping
+        },
+    ],
+    [
+        "mobileTouchMoveIconTexture",
+        "png",
+        "/icons/mobile_touch_move_icon.png",
+        (source: Texture) => {
+            source.colorSpace = SRGBColorSpace
+            source.minFilter = LinearFilter
+            source.magFilter = LinearFilter
+            source.generateMipmaps = false
+            source.wrapS = ClampToEdgeWrapping
+            source.wrapT = ClampToEdgeWrapping
+        },
+    ],
 ] as Source[]
 
 export const entrySources = [
