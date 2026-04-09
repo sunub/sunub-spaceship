@@ -1,4 +1,5 @@
 import { ColliderDesc, RigidBodyDesc } from "@dimforge/rapier3d-compat"
+import { inject, injectable } from "inversify"
 import {
     type BufferGeometry,
     InstancedMesh,
@@ -7,12 +8,11 @@ import {
     type MeshStandardMaterial,
     Object3D,
 } from "three/webgpu"
-import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import { CrystalMaterial } from "@/Materials/CrystalMaterial"
+import type { IPhysicsService } from "@/Services/IPhysicsService"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
-import type { IPhysicsService } from "@/Services/IPhysicsService"
-import { CrystalMaterial } from "@/Materials/CrystalMaterial"
 import { ResourceModel } from "../ResourceModel"
 
 @injectable()
@@ -20,9 +20,11 @@ export class BrightCrystal extends ResourceModel {
     private colliderMeshes: Mesh[] = []
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourcesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
-        @inject(GAME_CONTEXT.SERVICE.PhysicsService) private readonly physicsService: IPhysicsService,
+        @inject(GAME_CONTEXT.SERVICE.PhysicsService)
+        private readonly physicsService: IPhysicsService,
     ) {
         super(resourcesManager, sceneManager, "brightCrystalModel")
     }

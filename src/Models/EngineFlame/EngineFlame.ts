@@ -1,8 +1,8 @@
 import { BoxGeometry, Group, Matrix4, Mesh, Vector3 } from "three/webgpu"
-import { TweakPane } from "@/Debug/TweakPane"
-import { EngineFlameMaterial } from "./Shader/EngineFlameMaterial"
-import type Time from "@/utils/Time"
 import type { Camera } from "@/Camera/instances/Camera"
+import { TweakPane } from "@/Debug/TweakPane"
+import type Time from "@/utils/Time"
+import { EngineFlameMaterial } from "./Shader/EngineFlameMaterial"
 
 export class EngineFlame {
     public modelGroup: Group
@@ -170,7 +170,9 @@ export class EngineFlame {
                 this.tempWorldToLocal.copy(this.mesh.matrixWorld).invert()
                 this.tempCameraWorldPos.applyMatrix4(this.tempWorldToLocal)
 
-                this.material.uLocalCameraPos.value.copy(this.tempCameraWorldPos)
+                this.material.uLocalCameraPos.value.copy(
+                    this.tempCameraWorldPos,
+                )
             }
         }
     }

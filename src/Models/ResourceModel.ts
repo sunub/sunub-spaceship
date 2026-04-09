@@ -1,5 +1,5 @@
 import type { RigidBody } from "@dimforge/rapier3d-compat"
-import { Box3, Mesh, Object3D, Texture, Vector3 } from "three/webgpu"
+import { Box3, Mesh, Object3D, type Texture, Vector3 } from "three/webgpu"
 import type { IGameObject } from "../Services/IGameObject"
 import type { IResourceService } from "../Services/IResouceService"
 import type { ISceneManager } from "../Services/ISceneManager"
@@ -13,16 +13,16 @@ export abstract class ResourceModel implements IGameObject {
     constructor(
         protected readonly resourcesManager: IResourceService,
         protected readonly sceneManager: ISceneManager,
-        protected modelName: string = '',
-        protected textureName: string = '',
+        protected modelName: string = "",
+        protected textureName: string = "",
         protected position: Vector3 = new Vector3(0, 0, 0),
         protected scale: Vector3 = new Vector3(1, 1, 1),
     ) {}
 
     public async initialize(addToScene: boolean = true): Promise<void> {
-        await this.loadModel();
-        await this.setupPhysics();
-        this.onModelLoaded();
+        await this.loadModel()
+        await this.setupPhysics()
+        this.onModelLoaded()
 
         if (addToScene) {
             this.attachToScene()
@@ -86,11 +86,11 @@ export abstract class ResourceModel implements IGameObject {
     }
 
     protected loadTexture(): Texture | null {
-        if(this.textureName === '' || !this.textureName) {
+        if (this.textureName === "" || !this.textureName) {
             return null
         }
-        const texture = this.resourcesManager.getItem(this.textureName)   
-        if(!texture) {
+        const texture = this.resourcesManager.getItem(this.textureName)
+        if (!texture) {
             throw new Error(
                 `Texture '${this.textureName}' not found in resources. Check sources.ts configuration.`,
             )
@@ -116,7 +116,7 @@ export abstract class ResourceModel implements IGameObject {
 
     protected async setupPhysics(): Promise<void> {}
     protected onModelLoaded(): void {}
-    public abstract update(deltaTime: number, alpha?: number): void;
+    public abstract update(deltaTime: number, alpha?: number): void
 
     protected getModelBounds(): {
         size: Vector3

@@ -4,6 +4,7 @@ import {
     RigidBodyDesc,
     RigidBodyType,
 } from "@dimforge/rapier3d-compat"
+import { inject, injectable } from "inversify"
 import {
     Euler,
     InstancedMesh,
@@ -13,13 +14,12 @@ import {
     Quaternion,
     Vector3,
 } from "three/webgpu"
-import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
-import type { IResourceService } from "@/Services/IResouceService"
-import type { ISceneManager } from "@/Services/ISceneManager"
-import type { IPhysicsService } from "@/Services/IPhysicsService"
 import { TweakPane } from "@/Debug/TweakPane"
 import { ResourceModel } from "@/Models/ResourceModel"
+import type { IPhysicsService } from "@/Services/IPhysicsService"
+import type { IResourceService } from "@/Services/IResouceService"
+import type { ISceneManager } from "@/Services/ISceneManager"
 import { RocksPositionDebuger } from "./models/Rocks.PositionDebug"
 
 interface RockInstance {
@@ -71,9 +71,11 @@ export class Rocks extends ResourceModel {
     }
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourcesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
-        @inject(GAME_CONTEXT.SERVICE.PhysicsService) private readonly physicsService: IPhysicsService,
+        @inject(GAME_CONTEXT.SERVICE.PhysicsService)
+        private readonly physicsService: IPhysicsService,
     ) {
         // ResourceModel automatically sets position to (0,0,0) if not provided.
         // If we want to support passed position, we'd need another way, effectively ignored here as we assume singleton usage.
@@ -375,7 +377,8 @@ export class Rocks extends ResourceModel {
                 w: quaternion.w,
             })
 
-            const rigidBody = this.physicsService.createPhysicsBody(rigidBodyDesc)
+            const rigidBody =
+                this.physicsService.createPhysicsBody(rigidBodyDesc)
 
             // 모든 메시 템플릿에 대해 충돌체 생성하여 복합 충돌체 구성
             this.meshesToProcess.forEach((template) => {

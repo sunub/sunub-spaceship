@@ -1,30 +1,32 @@
 import { ColliderDesc, RigidBodyDesc } from "@dimforge/rapier3d-compat"
+import { inject, injectable } from "inversify"
 import { texture } from "three/tsl"
-import type {
-    BufferGeometry,
-    Material,
-    Matrix4,
-    Mesh,
-} from "three/webgpu"
+import type { BufferGeometry, Material, Matrix4, Mesh } from "three/webgpu"
 import { InstancedMesh, Object3D } from "three/webgpu"
+import { GAME_CONTEXT } from "@/core/DI/DITypes"
 import { MeshDefaultMaterial } from "@/Materials/MeshDefaultMaterial"
-import { ResourceModel } from "../ResourceModel"
+import type { IPhysicsService } from "@/Services/IPhysicsService"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
-import { inject, injectable } from "inversify"
-import { GAME_CONTEXT } from "@/core/DI/DITypes"
-import type { IPhysicsService } from "@/Services/IPhysicsService"
+import { ResourceModel } from "../ResourceModel"
 
 @injectable()
 export class TreeLights extends ResourceModel {
     private colliderMeshes: Mesh[] = []
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resoucesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resoucesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
-        @inject(GAME_CONTEXT.SERVICE.PhysicsService) private readonly physicsService: IPhysicsService,
+        @inject(GAME_CONTEXT.SERVICE.PhysicsService)
+        private readonly physicsService: IPhysicsService,
     ) {
-        super(resoucesManager, sceneManager, "treeLightsModel", "treeLightsTexture")
+        super(
+            resoucesManager,
+            sceneManager,
+            "treeLightsModel",
+            "treeLightsTexture",
+        )
     }
 
     protected setupModelStructure(clonedModel: Object3D): void {
@@ -53,8 +55,8 @@ export class TreeLights extends ResourceModel {
         >()
 
         const treeLightTexture = this.loadTexture()
-        if(!treeLightTexture) {
-            return;
+        if (!treeLightTexture) {
+            return
         }
 
         clonedModel.traverse((child) => {

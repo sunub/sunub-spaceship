@@ -1,16 +1,17 @@
+import { inject } from "inversify"
 import { color, float, texture } from "three/tsl"
 import type { Mesh, MeshStandardMaterial } from "three/webgpu"
 import { Object3D, Vector3 } from "three/webgpu"
-import { MeshDefaultMaterial } from "../../Materials/MeshDefaultMaterial"
-import { ResourceModel } from "../ResourceModel"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
-import { inject } from "inversify"
+import { MeshDefaultMaterial } from "../../Materials/MeshDefaultMaterial"
+import { ResourceModel } from "../ResourceModel"
 
 export class Github extends ResourceModel {
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resoucesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resoucesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
         position: Vector3 = new Vector3(0, 0, 0),
         scale: Vector3 = new Vector3(1, 1, 1),

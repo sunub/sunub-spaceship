@@ -1,20 +1,26 @@
+import { inject, injectable } from "inversify"
 import { texture } from "three/tsl"
 import type { Mesh } from "three/webgpu"
 import { Object3D } from "three/webgpu"
-import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
 import { MeshDefaultMaterial } from "@/Materials/MeshDefaultMaterial"
-import { ResourceModel } from "../ResourceModel"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
+import { ResourceModel } from "../ResourceModel"
 
 @injectable()
 export class Mountain extends ResourceModel {
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourcesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
     ) {
-        super(resourcesManager, sceneManager, "mountainModel", "mountainTexture")
+        super(
+            resourcesManager,
+            sceneManager,
+            "mountainModel",
+            "mountainTexture",
+        )
     }
 
     protected setupModelStructure(clonedModel: Object3D): void {
@@ -22,7 +28,7 @@ export class Mountain extends ResourceModel {
         this.modelGroup.name = `${this.modelName}Group`
 
         const mountainTexture = this.loadTexture()
-        if (!mountainTexture) return;
+        if (!mountainTexture) return
 
         this.mesh = clonedModel
         this.mesh.traverse((child) => {

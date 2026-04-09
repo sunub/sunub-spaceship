@@ -20,6 +20,10 @@ export class GrassMaterial extends MeshDefaultMaterial {
     private _uInteractionRadius: any
     private _uCenter: any
     private _uVisibleRadius: any
+    private _uFrustumNearCenter: any
+    private _uFrustumForward: any
+    private _uFrustumRight: any
+    private _uFrustumParams: any
 
     constructor(options: GrassMaterialOptions = {}) {
         const {
@@ -35,9 +39,15 @@ export class GrassMaterial extends MeshDefaultMaterial {
         )
         const time = uniform(0)
         const uPlayerPosition = uniform(new Vector3(0, -100, 0))
-        const uInteractionRadius = uniform(typeof interactionRadius === 'number' ? interactionRadius : 3.0)
+        const uInteractionRadius = uniform(
+            typeof interactionRadius === "number" ? interactionRadius : 3.0,
+        )
         const uCenter = uniform(new Vector3(0, 0, 0))
         const uVisibleRadius = uniform(200.0)
+        const uFrustumNearCenter = uniform(new Vector3(0, 0, 0))
+        const uFrustumForward = uniform(new Vector3(0, 0, -1))
+        const uFrustumRight = uniform(new Vector3(1, 0, 0))
+        const uFrustumParams = uniform(new Vector4(1, 1, 1, 4))
 
         const { positionNode, vNormal, vColor, vGrassData } = grassVertex(
             grassParams,
@@ -45,7 +55,11 @@ export class GrassMaterial extends MeshDefaultMaterial {
             uPlayerPosition,
             uInteractionRadius,
             uCenter,
-            uVisibleRadius
+            uVisibleRadius,
+            uFrustumNearCenter,
+            uFrustumForward,
+            uFrustumRight,
+            uFrustumParams,
         )
 
         const colorNode = grassFragment(vColor, vGrassData)
@@ -67,6 +81,10 @@ export class GrassMaterial extends MeshDefaultMaterial {
         this._uInteractionRadius = uInteractionRadius
         this._uCenter = uCenter
         this._uVisibleRadius = uVisibleRadius
+        this._uFrustumNearCenter = uFrustumNearCenter
+        this._uFrustumForward = uFrustumForward
+        this._uFrustumRight = uFrustumRight
+        this._uFrustumParams = uFrustumParams
 
         this.vertexNode = positionNode
         this.alphaTest = 0.5
@@ -203,9 +221,39 @@ export class GrassMaterial extends MeshDefaultMaterial {
     }
 
     set visibleRadius(v: number) {
-        if (typeof v === 'number' && !isNaN(v)) {
+        if (typeof v === "number" && !Number.isNaN(v)) {
             this._uVisibleRadius.value = v
         }
+    }
+
+    setVisibilityFrustum(
+        nearCenter: Vector3,
+        forward: Vector3,
+        right: Vector3,
+        depth: number,
+        nearHalfWidth: number,
+        farHalfWidth: number,
+        edgeFadeDistance: number,
+    ) {
+        if (
+            !nearCenter ||
+            !forward ||
+            !right ||
+            !Number.isFinite(depth) ||
+            depth <= 0
+        ) {
+            return
+        }
+
+        this._uFrustumNearCenter.value.copy(nearCenter)
+        this._uFrustumForward.value.copy(forward)
+        this._uFrustumRight.value.copy(right)
+        this._uFrustumParams.value.set(
+            depth,
+            Math.max(nearHalfWidth, 0.001),
+            Math.max(farHalfWidth, 0.001),
+            Math.max(edgeFadeDistance, 0.5),
+        )
     }
 
     // Helper to update specific grass params

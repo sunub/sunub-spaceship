@@ -1,11 +1,11 @@
 import { ColliderDesc, RigidBodyDesc } from "@dimforge/rapier3d-compat"
+import { inject, injectable } from "inversify"
 import { texture } from "three/tsl"
 import { Box3, Mesh, Object3D, Vector3 } from "three/webgpu"
-import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { IPhysicsService } from "@/Services/IPhysicsService"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
-import type { IPhysicsService } from "@/Services/IPhysicsService"
 import type Time from "@/utils/Time"
 import { MeshDefaultMaterial } from "../../Materials/MeshDefaultMaterial"
 import { ResourceModel } from "../ResourceModel"
@@ -18,9 +18,11 @@ export class CrystalStructure extends ResourceModel {
     private initialMetalScale: Map<number, Vector3> = new Map()
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourcesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
-        @inject(GAME_CONTEXT.SERVICE.PhysicsService) private readonly physicsService: IPhysicsService,
+        @inject(GAME_CONTEXT.SERVICE.PhysicsService)
+        private readonly physicsService: IPhysicsService,
         @inject(GAME_CONTEXT.UTILITY.Time) private readonly time: Time,
     ) {
         super(resourcesManager, sceneManager, "crystalStructure")

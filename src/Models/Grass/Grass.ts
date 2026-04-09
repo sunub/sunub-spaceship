@@ -1,5 +1,7 @@
+import { inject, injectable, unmanaged } from "inversify"
 import { MeshSurfaceSampler } from "three/examples/jsm/math/MeshSurfaceSampler.js"
 import {
+    Box3,
     BufferAttribute,
     InstancedBufferAttribute,
     InstancedBufferGeometry,
@@ -7,18 +9,16 @@ import {
     Object3D,
     Sphere,
     Vector3,
-    Box3,
 } from "three/webgpu"
-import { TweakPane } from "@/Debug/TweakPane"
-import { ResourceModel } from "../ResourceModel"
-import { GrassMaterial } from "./GrassMaterial"
-import type { GrassMaterialOptions } from "./GrassMaterial/GrassMaterial"
-import { inject, injectable, unmanaged } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { Rendering } from "@/core/Rendering"
+import { TweakPane } from "@/Debug/TweakPane"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
 import type { TerrainVisibilityArea } from "@/Services/TerrainVisibilityArea"
-import type { Rendering } from "@/core/Rendering"
+import { ResourceModel } from "../ResourceModel"
+import { GrassMaterial } from "./GrassMaterial"
+import type { GrassMaterialOptions } from "./GrassMaterial/GrassMaterial"
 
 export interface GrassOptions extends GrassMaterialOptions {
     count?: number
@@ -44,9 +44,11 @@ export class Grass extends ResourceModel {
     private time: number = 0
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resoucesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resoucesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
-        @inject(GAME_CONTEXT.SERVICE.TerrainVisibilityArea) private terrainVisibilityArea: TerrainVisibilityArea,
+        @inject(GAME_CONTEXT.SERVICE.TerrainVisibilityArea)
+        private terrainVisibilityArea: TerrainVisibilityArea,
         @inject(GAME_CONTEXT.CORE.Rendering) private rendering: Rendering,
         @unmanaged() options: GrassOptions = {},
     ) {
@@ -188,7 +190,9 @@ export class Grass extends ResourceModel {
             this.modelGroup.add(mesh)
         }
 
-        console.log(`[Grass] Distributed ${count} blades across the mesh surface using Sampler.`)
+        console.log(
+            `[Grass] Distributed ${count} blades across the mesh surface using Sampler.`,
+        )
     }
 
     public update(dt: number) {
@@ -196,17 +200,37 @@ export class Grass extends ResourceModel {
         if (this.grassMaterial) {
             this.grassMaterial.time = this.time
 
-            const visibilityService = this.terrainVisibilityArea
-            if (visibilityService && visibilityService.radius > 0) {
-                this.grassMaterial.center = visibilityService.center
-                this.grassMaterial.visibleRadius = visibilityService.radius
-            }
+            this.syncVisibilityCulling()
 
             const ship = this.sceneManager.getObjectByName("ShipPivot")
             if (ship) {
                 this.grassMaterial.playerPosition = ship.position
             }
         }
+    }
+
+    public syncVisibilityCulling() {
+        if (!this.grassMaterial) {
+            return
+        }
+
+        const visibilityService = this.terrainVisibilityArea
+
+        if (!visibilityService || visibilityService.radius <= 0) {
+            return
+        }
+
+        this.grassMaterial.center = visibilityService.center
+        this.grassMaterial.visibleRadius = visibilityService.radius
+        this.grassMaterial.setVisibilityFrustum(
+            visibilityService.frustumNearCenter,
+            visibilityService.frustumForward,
+            visibilityService.frustumRight,
+            visibilityService.frustumDepth,
+            visibilityService.frustumNearHalfWidth,
+            visibilityService.frustumFarHalfWidth,
+            visibilityService.frustumEdgeFadeDistance,
+        )
     }
 
     private setUpTweakPane() {
@@ -260,12 +284,14 @@ export class Grass extends ResourceModel {
             console.warn("Grass: Rendering service not injected.")
             return
         }
-        
+
         // WebGPURenderer might be initialized asynchronously or available directly
         const renderer = this.rendering.renderer
         if (!renderer) {
-             console.warn("Grass: Renderer instance is null. Is the game strictly initialized?")
-             return
+            console.warn(
+                "Grass: Renderer instance is null. Is the game strictly initialized?",
+            )
+            return
         }
 
         const info = renderer.info
@@ -277,21 +303,27 @@ export class Grass extends ResourceModel {
         // --- Quantitative Analysis Logic ---
         const totalCount = this.params.count
         const visibleRadius = this.terrainVisibilityArea.radius
-        
+
         // 1. Calculate Density (Instances per unit area)
         // If surfaceArea is 0 (fallback), avoid division by zero
         const area = this.surfaceArea > 0 ? this.surfaceArea : 10000 // Default fallback area
         const density = totalCount / area
-        
+
         // 2. Calculate Visible Area (Circle area: pi * r^2)
-        const visibleArea = Math.PI * Math.pow(visibleRadius, 2)
-        
+        const visibleArea = Math.PI * visibleRadius ** 2
+
         // 3. Estimated Active Objects
         // If visible area > total area, we clamp to total count
-        const estimatedActiveCount = Math.min(Math.floor(density * visibleArea), totalCount)
-        
+        const estimatedActiveCount = Math.min(
+            Math.floor(density * visibleArea),
+            totalCount,
+        )
+
         // 4. Reduction Ratio
-        const reductionRatio = ((1 - estimatedActiveCount / totalCount) * 100).toFixed(1)
+        const reductionRatio = (
+            (1 - estimatedActiveCount / totalCount) *
+            100
+        ).toFixed(1)
 
         console.group(
             "%c 🚀 [Optimization Check] Grass Performance",
@@ -303,16 +335,18 @@ export class Grass extends ResourceModel {
             "font-weight:bold; color: #ddd",
             "color: #00e676; font-weight: bold",
         )
-        
+
         console.log(
             `%c 2️⃣ Distribution & Culling Metrics:`,
             "font-weight:bold; color: #29b6f6",
         )
         console.log(`   - Total Mesh Area: ${area.toFixed(0)} m²`)
         console.log(`   - Instance Density: ${density.toFixed(2)} per m²`)
-        console.log(`   - Current Visible Radius: ${visibleRadius.toFixed(2)}m${playerDistText}`)
+        console.log(
+            `   - Current Visible Radius: ${visibleRadius.toFixed(2)}m${playerDistText}`,
+        )
         console.log(`   - Visible Area: ${visibleArea.toFixed(0)} m²`)
-        
+
         console.log(
             `%c 3️⃣ Estimated Active Objects (GPU Processed): %c${estimatedActiveCount.toLocaleString()}`,
             "font-weight:bold; color: #ddd",
@@ -329,7 +363,7 @@ export class Grass extends ResourceModel {
             "font-weight:bold; color: #ddd",
             "color: #ffca28; font-weight: bold",
         )
-        
+
         console.log(
             `%c 5️⃣ Active Triangles (Scene): %c${info.render.triangles.toLocaleString()}`,
             "font-weight:bold; color: #ddd",

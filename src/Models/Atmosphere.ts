@@ -1,18 +1,19 @@
 import { inject, injectable } from "inversify"
 import { DoubleSide, Mesh, Object3D } from "three/webgpu"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { IResourceService } from "@/Services/IResouceService"
+import type { ISceneManager } from "@/Services/ISceneManager"
 import type Time from "@/utils/Time"
 import { CloudMaterial } from "../Materials/CloudMaterial"
 import { ResourceModel } from "./ResourceModel"
-import type { IResourceService } from "@/Services/IResouceService"
-import type { ISceneManager } from "@/Services/ISceneManager"
 
 @injectable()
 export class Atmosphere extends ResourceModel {
     private material: CloudMaterial | null = null
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourcesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
         @inject(GAME_CONTEXT.UTILITY.Time) private readonly time: Time,
     ) {

@@ -1,8 +1,7 @@
+import type { RigidBody } from "@dimforge/rapier3d-compat"
 import gsap from "gsap"
-import {
-    uniform,
-    vec3,
-} from "three/tsl"
+import { inject, injectable } from "inversify"
+import { uniform, vec3 } from "three/tsl"
 import {
     CircleGeometry,
     Color,
@@ -14,19 +13,16 @@ import {
     TorusGeometry,
     Vector3,
 } from "three/webgpu"
-import { inject, injectable } from "inversify"
-
-import type { ProjectData } from "@/core/ProjectRegistry"
-import { ProjectHUD } from "../UI/ProjectHUD"
-import { TriggerRegion } from "./Area/TriggerRegion"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
-import type { ISceneManager } from "@/Services/ISceneManager"
-import type { IPhysicsService } from "@/Services/IPhysicsService"
-import type { Audio } from "@/Environment/Audio"
-import type { IGameObject } from "../Services/IGameObject"
-import type { RigidBody } from "@dimforge/rapier3d-compat"
 import type { EventBus } from "@/core/EventBus/EventBus"
 import { GameEvents } from "@/core/EventBus/EventBusType"
+import type { ProjectData } from "@/core/ProjectRegistry"
+import type { Audio } from "@/Environment/Audio"
+import type { IPhysicsService } from "@/Services/IPhysicsService"
+import type { ISceneManager } from "@/Services/ISceneManager"
+import type { IGameObject } from "../Services/IGameObject"
+import { ProjectHUD } from "../UI/ProjectHUD"
+import { TriggerRegion } from "./Area/TriggerRegion"
 
 @injectable()
 export class ProjectOutpost implements IGameObject {
@@ -48,12 +44,13 @@ export class ProjectOutpost implements IGameObject {
     private isSetup: boolean = false
 
     constructor(
-        @inject(GAME_CONTEXT.MANAGER.SceneManager) private readonly sceneManager: ISceneManager,
-        @inject(GAME_CONTEXT.SERVICE.PhysicsService) private readonly physicsService: IPhysicsService,
+        @inject(GAME_CONTEXT.MANAGER.SceneManager)
+        private readonly sceneManager: ISceneManager,
+        @inject(GAME_CONTEXT.SERVICE.PhysicsService)
+        private readonly physicsService: IPhysicsService,
         @inject(GAME_CONTEXT.CORE.Audio) private readonly audio: Audio,
         @inject(GAME_CONTEXT.CORE.EventBus) private readonly eventBus: EventBus,
-    ) {
-    }
+    ) {}
 
     public setup(projectData: ProjectData): void {
         this.projectData = projectData
@@ -128,7 +125,9 @@ export class ProjectOutpost implements IGameObject {
 
     async initialize(addToScene: boolean = true): Promise<void> {
         if (!this.isSetup) {
-            console.error("[ProjectOutpost] setup() must be called before initialize()")
+            console.error(
+                "[ProjectOutpost] setup() must be called before initialize()",
+            )
             return
         }
 
@@ -138,7 +137,11 @@ export class ProjectOutpost implements IGameObject {
             this.attachToScene()
         }
 
-        await this.trigger.initialize(this.audio, this.physicsService, this.sceneManager)
+        await this.trigger.initialize(
+            this.audio,
+            this.physicsService,
+            this.sceneManager,
+        )
 
         this.trigger.on("enter", () => {
             console.log(`[ProjectOutpost] Enter: ${this.projectData.title}`)
@@ -149,12 +152,12 @@ export class ProjectOutpost implements IGameObject {
         })
 
         this.trigger.on("exit", () => {
-             console.log(`[ProjectOutpost] Exit: ${this.projectData.title}`)
+            console.log(`[ProjectOutpost] Exit: ${this.projectData.title}`)
             this.animateTransition(false)
             this.hud.hide()
             this.hud.setInteractionReady(false)
             this.stopPulseEffect()
-         })
+        })
 
         this.hud.onInteract(() => {
             this.eventBus.emit(GameEvents.PROJECT_INTERACTION_REQUESTED, {
@@ -286,7 +289,7 @@ export class ProjectOutpost implements IGameObject {
             onComplete: () => {
                 // Check if mesh still exists/part of scene to avoid errors?
                 if (this.mesh) {
-                   this.mesh.remove(ring)
+                    this.mesh.remove(ring)
                 }
                 material.dispose()
             },

@@ -1,3 +1,4 @@
+import { inject, injectable } from "inversify"
 import {
     attribute,
     cos,
@@ -23,15 +24,14 @@ import {
     StorageInstancedBufferAttribute,
     Vector3,
 } from "three/webgpu"
-import { inject, injectable } from "inversify"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import type { Rendering } from "@/core/Rendering"
+import { MeshDefaultMaterial } from "@/Materials/MeshDefaultMaterial"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
 import type Time from "@/utils/Time"
-import type { Rendering } from "@/core/Rendering"
-import { MeshDefaultMaterial } from "@/Materials/MeshDefaultMaterial"
-import { BirdGeometry } from "./BirdGeometry"
 import { ResourceModel } from "../ResourceModel"
+import { BirdGeometry } from "./BirdGeometry"
 
 @injectable()
 export class Birds extends ResourceModel {
@@ -65,10 +65,12 @@ export class Birds extends ResourceModel {
     private limitRadius = uniform(100.0)
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourcesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
         @inject(GAME_CONTEXT.UTILITY.Time) private readonly time: Time,
-        @inject(GAME_CONTEXT.CORE.Rendering) private readonly rendering: Rendering,
+        @inject(GAME_CONTEXT.CORE.Rendering)
+        private readonly rendering: Rendering,
     ) {
         super(resourcesManager, sceneManager, "birdsModel")
         // Position isn't strictly used in original constructor other than initially setting modelGroup position
@@ -324,8 +326,8 @@ export class Birds extends ResourceModel {
         this.mesh.frustumCulled = false
 
         if (this.modelGroup) {
-             this.modelGroup.add(this.mesh)
-             this.modelGroup.scale.setScalar(0.075) // 전체 모델 크기
+            this.modelGroup.add(this.mesh)
+            this.modelGroup.scale.setScalar(0.075) // 전체 모델 크기
         }
     }
 

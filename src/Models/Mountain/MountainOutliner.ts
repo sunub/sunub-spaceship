@@ -1,14 +1,14 @@
 import { ColliderDesc, RigidBodyDesc } from "@dimforge/rapier3d-compat"
+import { inject, injectable } from "inversify"
 import { texture } from "three/tsl"
 import type { Mesh } from "three/webgpu"
 import { Object3D } from "three/webgpu"
-import { MeshDefaultMaterial } from "@/Materials/MeshDefaultMaterial"
-import { ResourceModel } from "../ResourceModel"
-import { inject, injectable } from "inversify"
-import type { ISceneManager } from "@/Services/ISceneManager"
-import type { IResourceService } from "@/Services/IResouceService"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
+import { MeshDefaultMaterial } from "@/Materials/MeshDefaultMaterial"
 import type { IPhysicsService } from "@/Services/IPhysicsService"
+import type { IResourceService } from "@/Services/IResouceService"
+import type { ISceneManager } from "@/Services/ISceneManager"
+import { ResourceModel } from "../ResourceModel"
 
 @injectable()
 export class MountainOutliner extends ResourceModel {
@@ -16,10 +16,17 @@ export class MountainOutliner extends ResourceModel {
 
     constructor(
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourceService: IResourceService,
-        @inject(GAME_CONTEXT.SERVICE.PhysicsService) private readonly physicsService: IPhysicsService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourceService: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.PhysicsService)
+        private readonly physicsService: IPhysicsService,
     ) {
-        super(resourceService, sceneManager, "mountainOutlinerModel", "mountainTexture")
+        super(
+            resourceService,
+            sceneManager,
+            "mountainOutlinerModel",
+            "mountainTexture",
+        )
     }
 
     protected setupModelStructure(clonedModel: Object3D): void {
@@ -27,7 +34,7 @@ export class MountainOutliner extends ResourceModel {
         this.modelGroup.name = `${this.modelName}Group`
 
         const mountainTexture = this.loadTexture()
-        if(mountainTexture === null) {
+        if (mountainTexture === null) {
             throw new Error("Mountain texture not found")
         }
 

@@ -1,10 +1,15 @@
 import type { Collider, RigidBody } from "@dimforge/rapier3d-compat"
 import { ColliderDesc, RigidBodyDesc } from "@dimforge/rapier3d-compat"
-import { BoxGeometry, Mesh, MeshBasicMaterial, Vector3 } from "three/webgpu"
-import EventEmitter from "@/utils/EventEmitter"
+import {
+    BoxGeometry,
+    Mesh,
+    MeshBasicMaterial,
+    type Vector3,
+} from "three/webgpu"
 import type { Audio } from "@/Environment/Audio"
 import type { IPhysicsService } from "@/Services/IPhysicsService"
 import type { ISceneManager } from "@/Services/ISceneManager"
+import EventEmitter from "@/utils/EventEmitter"
 
 export class TriggerRegion extends EventEmitter {
     private mesh: Mesh
@@ -54,8 +59,11 @@ export class TriggerRegion extends EventEmitter {
         this.sceneManager.add(this.mesh)
 
         // Create Rapier Sensor
-        const rigidBodyDesc = RigidBodyDesc.fixed()
-            .setTranslation(this.position.x, this.position.y, this.position.z)
+        const rigidBodyDesc = RigidBodyDesc.fixed().setTranslation(
+            this.position.x,
+            this.position.y,
+            this.position.z,
+        )
 
         this.sensorBody = this.physicsService.createPhysicsBody(rigidBodyDesc)
 
@@ -68,7 +76,10 @@ export class TriggerRegion extends EventEmitter {
         colliderDesc.setSensor(true)
         colliderDesc.setCollisionGroups((0x0001 << 16) | 0xffff)
 
-        this.sensor = this.physicsService.createCollider(colliderDesc, this.sensorBody)
+        this.sensor = this.physicsService.createCollider(
+            colliderDesc,
+            this.sensorBody,
+        )
     }
 
     setTargetBody(body: RigidBody) {
@@ -83,7 +94,13 @@ export class TriggerRegion extends EventEmitter {
     }
 
     update(_deltaTime: number) {
-        if (!this.physicsService || !this.targetBody || !this.audio || !this.sensor) return
+        if (
+            !this.physicsService ||
+            !this.targetBody ||
+            !this.audio ||
+            !this.sensor
+        )
+            return
 
         // 모든 콜라이더에 대해 겹침 확인 (더 견고한 방식)
         let isIntersecting = false
@@ -93,10 +110,7 @@ export class TriggerRegion extends EventEmitter {
             const collider = this.targetBody.collider(i)
             if (
                 collider &&
-                this.physicsService.checkIntersection(
-                    this.sensor,
-                    collider,
-                )
+                this.physicsService.checkIntersection(this.sensor, collider)
             ) {
                 isIntersecting = true
                 break

@@ -1,15 +1,14 @@
 import * as RAPIER from "@dimforge/rapier3d-compat"
-import { Mesh } from "three/webgpu"
-import { color, vec3 } from "three/tsl"
-import { Box3, Object3D, Vector3 } from "three/webgpu"
 import { inject, injectable } from "inversify"
+import { color, vec3 } from "three/tsl"
+import { Box3, type Mesh, Object3D, Vector3 } from "three/webgpu"
 import { GAME_CONTEXT } from "@/core/DI/DITypes"
-import { GridMaterial } from "@/Materials/GridMaterial"
 import { TweakPane } from "@/Debug/TweakPane"
-import { ResourceModel } from "../ResourceModel"
+import { GridMaterial } from "@/Materials/GridMaterial"
+import type { IPhysicsService } from "@/Services/IPhysicsService"
 import type { IResourceService } from "@/Services/IResouceService"
 import type { ISceneManager } from "@/Services/ISceneManager"
-import type { IPhysicsService } from "@/Services/IPhysicsService"
+import { ResourceModel } from "../ResourceModel"
 
 @injectable()
 export class Floor extends ResourceModel {
@@ -26,9 +25,11 @@ export class Floor extends ResourceModel {
     private floorDepth: number = 0
 
     constructor(
-        @inject(GAME_CONTEXT.SERVICE.ResourceService) resourcesManager: IResourceService,
+        @inject(GAME_CONTEXT.SERVICE.ResourceService)
+        resourcesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
-        @inject(GAME_CONTEXT.SERVICE.PhysicsService) private readonly physicsService: IPhysicsService,
+        @inject(GAME_CONTEXT.SERVICE.PhysicsService)
+        private readonly physicsService: IPhysicsService,
     ) {
         super(resourcesManager, sceneManager, "floorModel")
 

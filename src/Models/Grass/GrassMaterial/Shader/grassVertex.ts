@@ -15,6 +15,7 @@ import {
     float,
     floor,
     fract,
+    If,
     int,
     length,
     mat2,
@@ -187,6 +188,10 @@ export default function grassVertex(
     uInteractionRadius: ShaderNodeObject<THREE.UniformNode<number>>,
     uCenter: ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>,
     uVisibleRadius: ShaderNodeObject<THREE.UniformNode<number>>,
+    uFrustumNearCenter: ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>,
+    uFrustumForward: ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>,
+    uFrustumRight: ShaderNodeObject<THREE.UniformNode<THREE.Vector3>>,
+    uFrustumParams: ShaderNodeObject<THREE.UniformNode<THREE.Vector4>>,
 ) {
     // Varyings
     const vColor = varying(vec3(0.0), "vColor")
@@ -219,14 +224,12 @@ export default function grassVertex(
             select(saturateValue(hashVal.z).greaterThan(0.75), 1.0, 0.0),
         )
 
-        // Rotation
         const PI = float(Math.PI)
         const angle = remap(hashVal.x, float(-1.0), float(1.0), PI.negate(), PI)
 
         const stiffness = float(0.5)
         const tileGrassHeight = mix(1.0, 1.5, grassType)
 
-        // Vertex ID
         const vertFB_ID = int(vertexIndex).mod(mul(GRASS_VERTICES, 2))
         const vertID = vertFB_ID.mod(GRASS_VERTICES)
 
@@ -245,206 +248,252 @@ export default function grassVertex(
             easeOut(sub(1.08, heightPercent), float(2.0)),
         )
         const height = mul(GRASS_HEIGHT, tileGrassHeight)
-
-        // Height randomization
         const randomHeight = mul(hashVal.y, 0.1)
         const finalHeight = add(height, randomHeight)
-
         const isInvalid = finalHeight.lessThan(0.3)
-
-        // --- Distance-based fade (computed early using instance world position) ---
         const distFromCenter = distance(grassBladeWorldPos, uCenter)
-        const fadeStart = mul(uVisibleRadius, 0.8)
-        const fadeEnd = mul(uVisibleRadius, 1.12)
-        const fadeFactor = smoothstep(fadeStart, fadeEnd, distFromCenter)
-        const distanceScale = sub(1.0, fadeFactor)
 
-        const x = mul(sub(xSide, 0.5), width)
+        const frustumDepth = max(uFrustumParams.x, float(0.001))
+        const frustumOffset = sub(grassBladeWorldPos, uFrustumNearCenter)
+        const longitudinal = dot(frustumOffset, uFrustumForward)
+        const footprintT = clamp(div(longitudinal, frustumDepth), 0.0, 1.0)
+        const halfWidth = mix(uFrustumParams.y, uFrustumParams.z, footprintT)
+        const lateral = abs(dot(frustumOffset, uFrustumRight))
 
-        // Wind and Leaning
-        const windScale = float(0.5)
-        const windSpeed = float(1.0)
+        const outsideDepth = longitudinal
+            .lessThan(0.0)
+            .or(longitudinal.greaterThan(frustumDepth))
+        const outsideWidth = lateral.greaterThan(halfWidth)
+        const outsideRadius = distFromCenter.greaterThan(uVisibleRadius)
+        const shouldEarlyCull = isInvalid
+            .or(tileGrassHeight.lessThan(0.25))
+            .or(outsideDepth)
+            .or(outsideWidth)
+            .or(outsideRadius)
 
-        const windStrength = noise(
-            add(
-                vec3(mul(grassBladeWorldPos.xz, windScale), 0.0),
-                mul(time, windSpeed),
-            ),
+        const edgeFadeDistance = max(uFrustumParams.w, float(0.5))
+        const radialFade = smoothstep(
+            max(0.0, sub(uVisibleRadius, mul(edgeFadeDistance, 1.5))),
+            uVisibleRadius,
+            distFromCenter,
         )
-        const stabilizedWindStrength = mix(
-            windStrength,
-            mul(windStrength, 0.35),
-            stabilizeFactor,
+        const depthFade = smoothstep(
+            max(0.0, sub(frustumDepth, edgeFadeDistance)),
+            frustumDepth,
+            longitudinal,
         )
-
-        const flutter = mul(
-            noise(
-                add(vec3(mul(grassBladeWorldPos.xz, 1.0), 0.0), mul(time, 1.5)),
-            ),
-            0.1,
+        const sideFade = smoothstep(
+            max(0.0, sub(halfWidth, edgeFadeDistance)),
+            halfWidth,
+            lateral,
         )
-        const stabilizedFlutter = mix(
-            flutter,
-            mul(flutter, 0.2),
-            stabilizeFactor,
-        )
-
-        const windCombined = add(stabilizedWindStrength, stabilizedFlutter)
-
-        const windAngle = add(0.0, mul(windCombined, 0.2))
-        const windAxis = vec3(cos(windAngle), 0.0, sin(windAngle))
-
-        const windLeanAngle = mul(windCombined, 1.0, heightPercent, stiffness)
-
-        const randomLeanAnimation = mul(
-            noise(vec3(grassBladeWorldPos.xz, mul(time, 1.5))),
-            add(mul(windCombined, 0.5), 0.125),
-        )
-        const stabilizedLeanAnimation = mix(
-            randomLeanAnimation,
-            mul(randomLeanAnimation, 0.2),
-            stabilizeFactor,
+        const distanceScale = sub(
+            1.0,
+            max(radialFade, max(depthFade, sideFade)),
         )
 
-        const leanFactor = add(
-            remap(hashVal.y, float(-1.0), float(1.0), float(-0.2), float(0.2)),
-            stabilizedLeanAnimation,
-        )
+        vColor.assign(vec3(0.0))
+        vNormal.assign(vec3(0.0, 1.0, 0.0))
+        vWorldPosition.assign(grassBladeWorldPos)
+        vGrassData.assign(vec4(0.0))
 
-        // Interaction Logic
-        const dist = distance(grassBladeWorldPos, uPlayerPosition)
-        const radius = max(0.001, uInteractionRadius)
+        const finalPosition = vec4(2.0, 2.0, 2.0, 1.0).toVar()
 
-        const falloff = sub(1.0, smoothstep(0.0, radius, dist))
+        If(shouldEarlyCull.not(), () => {
+            const x = mul(sub(xSide, 0.5), width)
 
-        const rawPushDir = normalize(sub(grassBladeWorldPos, uPlayerPosition))
-        const flatDir = vec3(rawPushDir.x, 0.0, rawPushDir.z)
-        const flatLen = length(flatDir)
+            const windScale = float(0.5)
+            const windSpeed = float(1.0)
 
-        const safePushDir = select(
-            flatLen.greaterThan(0.001),
-            normalize(flatDir),
-            vec3(1.0, 0.0, 0.0),
-        )
+            const windStrength = noise(
+                add(
+                    vec3(mul(grassBladeWorldPos.xz, windScale), 0.0),
+                    mul(time, windSpeed),
+                ),
+            )
+            const stabilizedWindStrength = mix(
+                windStrength,
+                mul(windStrength, 0.35),
+                stabilizeFactor,
+            )
 
-        const interactionAxis = cross(vec3(0.0, 1.0, 0.0), safePushDir)
-        const interactionStrength = mul(falloff.negate(), 0.8, heightPercent)
-        const squashFactor = sub(1.0, mul(falloff, 0.8))
-        const darkenFactor = falloff
+            const flutter = mul(
+                noise(
+                    add(
+                        vec3(mul(grassBladeWorldPos.xz, 1.0), 0.0),
+                        mul(time, 1.5),
+                    ),
+                ),
+                0.1,
+            )
+            const stabilizedFlutter = mix(
+                flutter,
+                mul(flutter, 0.2),
+                stabilizeFactor,
+            )
 
-        const interactionMat = rotateAxis(interactionAxis, interactionStrength)
-        const windMat = rotateAxis(windAxis, windLeanAngle)
-        const localRot = rotateY(angle)
+            const windCombined = add(stabilizedWindStrength, stabilizedFlutter)
+            const windAngle = add(0.0, mul(windCombined, 0.2))
+            const windAxis = vec3(cos(windAngle), 0.0, sin(windAngle))
+            const windLeanAngle = mul(
+                windCombined,
+                1.0,
+                heightPercent,
+                stiffness,
+            )
 
-        const grassMat = mul(interactionMat, mul(windMat, localRot))
+            const randomLeanAnimation = mul(
+                noise(vec3(grassBladeWorldPos.xz, mul(time, 1.5))),
+                add(mul(windCombined, 0.5), 0.125),
+            )
+            const stabilizedLeanAnimation = mix(
+                randomLeanAnimation,
+                mul(randomLeanAnimation, 0.2),
+                stabilizeFactor,
+            )
 
-        // Bezier
-        const p1 = vec3(0.0)
-        const p2 = vec3(0.0, 0.5, 0.0)
-        const p3 = vec3(0.0, 0.8, 0.0)
-        const p4 = vec3(0.0, cos(leanFactor), sin(leanFactor))
+            const leanFactor = add(
+                remap(
+                    hashVal.y,
+                    float(-1.0),
+                    float(1.0),
+                    float(-0.2),
+                    float(0.2),
+                ),
+                stabilizedLeanAnimation,
+            )
 
-        const curve = bezier(p1, p2, p3, p4, heightPercent)
-        const curveGrad = bezierGrad(p1, p2, p3, p4, heightPercent)
+            const dist = distance(grassBladeWorldPos, uPlayerPosition)
+            const radius = max(0.001, uInteractionRadius)
+            const falloff = sub(1.0, smoothstep(0.0, radius, dist))
 
-        // @ts-expect-error
-        const curveRot90 = mul(mat2(0.0, 1.0, -1.0, 0.0), zSide.negate())
+            const rawPushDir = normalize(
+                sub(grassBladeWorldPos, uPlayerPosition),
+            )
+            const flatDir = vec3(rawPushDir.x, 0.0, rawPushDir.z)
+            const flatLen = length(flatDir)
 
-        const y = mul(curve.y, finalHeight, squashFactor, distanceScale)
-        const z = mul(curve.z, finalHeight, squashFactor, distanceScale)
+            const safePushDir = select(
+                flatLen.greaterThan(0.001),
+                normalize(flatDir),
+                vec3(1.0, 0.0, 0.0),
+            )
 
-        const yFinal = select(heightPercent.lessThan(0.01), 0.0, y)
-        const zFinal = select(heightPercent.lessThan(0.01), 0.0, z)
+            const interactionAxis = cross(vec3(0.0, 1.0, 0.0), safePushDir)
+            const interactionStrength = mul(
+                falloff.negate(),
+                0.8,
+                heightPercent,
+            )
+            const squashFactor = sub(1.0, mul(falloff, 0.8))
+            const darkenFactor = falloff
 
-        const grassLocalPosition = add(
-            mul(grassMat, vec3(x, yFinal, zFinal)),
-            grassOffset,
-        )
+            const interactionMat = rotateAxis(
+                interactionAxis,
+                interactionStrength,
+            )
+            const windMat = rotateAxis(windAxis, windLeanAngle)
+            const localRot = rotateY(angle)
+            const grassMat = mul(interactionMat, mul(windMat, localRot))
 
-        // --- Normal Calculation Start ---
+            const p1 = vec3(0.0)
+            const p2 = vec3(0.0, 0.5, 0.0)
+            const p3 = vec3(0.0, 0.8, 0.0)
+            const p4 = vec3(0.0, cos(leanFactor), sin(leanFactor))
 
-        // 1. 기하학적 법선 (실제 휘어진 풀잎의 법선)
-        const exactLocalNormal = mul(
-            grassMat,
-            vec3(0.0, mul(curveRot90, curveGrad.yz)),
-        )
-        const exactWorldNormal = normalize(
-            mul(modelWorldMatrix, vec4(exactLocalNormal, 0.0)).xyz,
-        )
+            const curve = bezier(p1, p2, p3, p4, heightPercent)
+            const curveGrad = bezierGrad(p1, p2, p3, p4, heightPercent)
 
-        // 2. 지형 법선 (보통 위쪽) - 빛을 부드럽게 받게 함
-        const terrainNormal = vec3(0.0, 1.0, 0.0)
+            // @ts-expect-error
+            const curveRot90 = mul(mat2(0.0, 1.0, -1.0, 0.0), zSide.negate())
 
-        // 3. Normal Blending (법선 혼합)
-        // 0.0: 완전한 풀잎 법선 (그림자 짙음), 1.0: 지형 법선 (평평함)
-        // 0.5 정도가 입체감과 부드러움의 균형이 좋음
-        const blendRatio = float(0.5)
-        const blendedWorldNormal = normalize(
-            mix(exactWorldNormal, terrainNormal, blendRatio),
-        )
+            const y = mul(curve.y, finalHeight, squashFactor, distanceScale)
+            const z = mul(curve.z, finalHeight, squashFactor, distanceScale)
+            const yFinal = select(heightPercent.lessThan(0.01), 0.0, y)
+            const zFinal = select(heightPercent.lessThan(0.01), 0.0, z)
 
-        // 4. View Space 변환 (MeshStandardMaterial은 View Space Normal을 선호)
-        // const viewNormal = normalize(
-        //     mul(modelViewMatrix, vec4(blendedWorldNormal, 0.0)).xyz,
-        // )
-        // --- Normal Calculation End ---
+            const grassLocalPosition = add(
+                mul(grassMat, vec3(x, yFinal, zFinal)),
+                grassOffset,
+            )
 
-        // View dependent effects (Thickening)
-        const currentWorldPosition = mul(
-            modelWorldMatrix,
-            vec4(grassLocalPosition, 1.0),
-        )
-        const viewDir = normalize(sub(cameraPosition, currentWorldPosition.xyz))
+            const exactLocalNormal = mul(
+                grassMat,
+                vec3(0.0, mul(curveRot90, curveGrad.yz)),
+            )
+            const exactWorldNormal = normalize(
+                mul(modelWorldMatrix, vec4(exactLocalNormal, 0.0)).xyz,
+            )
 
-        // 두께감 계산 시에는 블렌딩된 노말보다 실제 노말을 쓰는 것이 더 정확한 외곽선을 만듦
-        const viewDotNormal = saturateValue(abs(dot(exactWorldNormal, viewDir)))
-        const viewSpaceThickenFactor = pow(sub(1.0, viewDotNormal), float(3.0))
-        const stabilizedThickenFactor = mix(
-            viewSpaceThickenFactor,
-            float(0.18),
-            stabilizeFactor,
-        )
+            const terrainNormal = vec3(0.0, 1.0, 0.0)
+            const blendRatio = float(0.5)
+            const blendedWorldNormal = normalize(
+                mix(exactWorldNormal, terrainNormal, blendRatio),
+            )
 
-        const mvPosition = mul(modelViewMatrix, vec4(grassLocalPosition, 1.0))
-        const thickenOffset = mul(
-            stabilizedThickenFactor,
-            sub(xSide, 0.5),
-            width,
-            0.5,
-        )
-        mvPosition.x.addAssign(thickenOffset)
+            const currentWorldPosition = mul(
+                modelWorldMatrix,
+                vec4(grassLocalPosition, 1.0),
+            )
+            const viewDir = normalize(
+                sub(cameraPosition, currentWorldPosition.xyz),
+            )
+            const viewDotNormal = saturateValue(
+                abs(dot(exactWorldNormal, viewDir)),
+            )
+            const viewSpaceThickenFactor = pow(
+                sub(1.0, viewDotNormal),
+                float(3.0),
+            )
+            const stabilizedThickenFactor = mix(
+                viewSpaceThickenFactor,
+                float(0.18),
+                stabilizeFactor,
+            )
 
-        // Colors
-        const BASE_COLOR = vec3(0.35, 0.2, 0.01)
-        const TIP_COLOR = vec3(0.5, 0.65, 0.46)
+            const mvPosition = mul(
+                modelViewMatrix,
+                vec4(grassLocalPosition, 1.0),
+            )
+            const thickenOffset = mul(
+                stabilizedThickenFactor,
+                sub(xSide, 0.5),
+                width,
+                0.5,
+            )
+            mvPosition.x.addAssign(thickenOffset)
 
-        const baseVColor = mix(BASE_COLOR, TIP_COLOR, heightPercent)
-        const colorVar = mul(hashVal.x, 0.1)
-        const finalVColor = add(
-            baseVColor,
-            vec3(mul(colorVar, 0.5), mul(colorVar, 0.2), mul(colorVar, 0.5)),
-        )
-        const darkenedColor = mul(finalVColor, sub(1.0, mul(0.6, darkenFactor)))
+            const BASE_COLOR = vec3(0.35, 0.2, 0.01)
+            const TIP_COLOR = vec3(0.5, 0.65, 0.46)
+            const baseVColor = mix(BASE_COLOR, TIP_COLOR, heightPercent)
+            const colorVar = mul(hashVal.x, 0.1)
+            const finalVColor = add(
+                baseVColor,
+                vec3(
+                    mul(colorVar, 0.5),
+                    mul(colorVar, 0.2),
+                    mul(colorVar, 0.5),
+                ),
+            )
+            const darkenedColor = mul(
+                finalVColor,
+                sub(1.0, mul(0.6, darkenFactor)),
+            )
 
-        vColor.assign(
-            select(darkenFactor.greaterThan(0.0), darkenedColor, finalVColor),
-        )
+            vColor.assign(
+                select(
+                    darkenFactor.greaterThan(0.0),
+                    darkenedColor,
+                    finalVColor,
+                ),
+            )
+            vNormal.assign(blendedWorldNormal)
+            vWorldPosition.assign(currentWorldPosition.xyz)
+            vGrassData.assign(vec4(x, heightPercent, xSide, grassType))
+            finalPosition.assign(mul(cameraProjectionMatrix, mvPosition))
+        })
 
-        // [중요] 계산된 View Space Normal을 vNormal에 할당 -> World Space Normal로 변경 (조명 계산 정확성 위함)
-        vNormal.assign(blendedWorldNormal)
-
-        vWorldPosition.assign(currentWorldPosition.xyz)
-        vGrassData.assign(vec4(x, heightPercent, xSide, grassType))
-
-        // --- Distance Culling (hard discard beyond visible radius) ---
-        const cullingDiscard = distFromCenter.greaterThan(mul(uVisibleRadius, 1.25))
-
-        // Combine discard conditions
-        const shouldDiscard = isInvalid.or(tileGrassHeight.lessThan(0.25)).or(cullingDiscard)
-
-        const finalPosition = mul(cameraProjectionMatrix, mvPosition)
-
-        return select(shouldDiscard, vec4(2.0, 2.0, 2.0, 1.0), finalPosition)
+        return finalPosition
     })
 
     const positionNode = main()
