@@ -1,5 +1,7 @@
 # sunub-spaceship
 
+<img width="835" height="429" alt="spacehip-banner" src="https://github.com/user-attachments/assets/86e854bf-48bb-4cca-9fa4-6d63d4b37106" />
+
 ## 설계 의도 및 구조적 고려사항
 
 ### 1. 확장성과 유지보수성을 최우선으로 한 구조 설계
