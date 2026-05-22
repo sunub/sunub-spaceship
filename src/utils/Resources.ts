@@ -43,7 +43,7 @@ export type LoadProgressCallback = (
     info: LoadProgressInfo,
 ) => void
 
-type ResourceYieldMode = "microtask" | "animationFrame"
+type ResourceYieldMode = "microtask" | "animationFrame" | "macrotask"
 
 type LoadOptions = {
     concurrency?: number
@@ -89,8 +89,8 @@ export class Resources implements IResourceService {
             options.concurrency,
             toLoad,
         )
-        const yieldAfter = Math.max(0, options.yieldAfter ?? 0)
-        const yieldMode = options.yieldMode ?? "microtask"
+        const yieldAfter = Math.max(0, options.yieldAfter ?? 3)
+        const yieldMode = options.yieldMode ?? "macrotask"
         let processedSinceYield = 0
 
         const getRenderer = () => {
@@ -219,8 +219,103 @@ export class Resources implements IResourceService {
                 requestAnimationFrame(() => resolve()),
             )
         }
+        if (mode === "macrotask") {
+            const globalScheduler = typeof window !== "undefined" ? (window as any).scheduler : (globalThis as any).scheduler;
+            if (globalScheduler && globalScheduler.yield) {
+                return globalScheduler.yield();
+            }
+            return new Promise((resolve) => setTimeout(resolve, 0))
+        }
 
         return Promise.resolve()
+    }
+
+    public async *loadGenerator(
+        sources: Source[],
+        options: LoadOptions = {},
+    ): AsyncGenerator<{
+        name: string
+        type: LoaderType
+        path: string
+        index: number
+        total: number
+        file: any
+    }, void, unknown> {
+        const toLoad = sources.length
+        if (toLoad === 0) return
+
+        const sourcePriority = options.resourcePriority
+        const yieldAfter = Math.max(0, options.yieldAfter ?? 3)
+        const yieldMode = options.yieldMode ?? "macrotask"
+        let processedSinceYield = 0
+
+        const getRenderer = () => {
+            try {
+                return this.rendering.renderer
+            } catch (_) {
+                return undefined
+            }
+        }
+
+        const queue = sources
+            .map((source, index) => ({
+                source,
+                index,
+                priority: sourcePriority ? sourcePriority(source, index) : 0,
+            }))
+            .sort((a, b) => {
+                if (a.priority === b.priority) {
+                    return a.index - b.index
+                }
+                return a.priority - b.priority
+            })
+
+        for (const queuedSource of queue) {
+            const { source, index } = queuedSource
+            const [name, type, path, callback] = source
+
+            let file = this.items[name]
+            if (!file) {
+                const loader = this.getLoader(type, getRenderer())
+                if (loader) {
+                    try {
+                        file = await PerformanceTracker.trackResource(
+                            name,
+                            type,
+                            path,
+                            () =>
+                                new Promise((resolve, reject) => {
+                                    if (type === "cubeTexture") {
+                                        loader.load([path], resolve, undefined, reject)
+                                    } else {
+                                        loader.load(path, resolve, undefined, reject)
+                                    }
+                                }),
+                            options.resourcePhase,
+                        )
+
+                        if (callback) callback(file)
+                        this.items[name] = file
+                    } catch (error) {
+                        console.error(`Resources: Failed to load ${name} at ${path}`, error)
+                    }
+                }
+            }
+
+            yield {
+                name,
+                type,
+                path,
+                index,
+                total: toLoad,
+                file,
+            }
+
+            if (yieldAfter > 0 && ++processedSinceYield >= yieldAfter) {
+                processedSinceYield = 0
+                await this.yieldToBrowser(yieldMode)
+            }
+        }
     }
 
     private resolveConcurrency(

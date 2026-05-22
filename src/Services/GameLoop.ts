@@ -23,7 +23,6 @@ export type GameLoopMode = "entry" | "transition" | "full"
 @injectable()
 export class GameLoop {
     private isRunning = false
-    private isRendering = false
     private shouldResetTime = false
     private entryDisposed = false
     private mode: GameLoopMode = "entry"
@@ -97,20 +96,13 @@ export class GameLoop {
         this.update()
     }
 
-    private async update() {
-        if (this.isRendering) {
-            return
-        }
-        this.isRendering = true
-
+    private update() {
         const context = this.createPhaseContext()
 
         try {
-            await this.runPhases(context)
+            this.runPhases(context)
         } catch (error) {
             console.error("Game Loop Error:", error)
-        } finally {
-            this.isRendering = false
         }
     }
 
@@ -189,8 +181,8 @@ export class GameLoop {
             },
             {
                 name: "render",
-                run: async () => {
-                    await this.rendering.update()
+                run: () => {
+                    this.rendering.update()
                 },
             },
             {
@@ -207,13 +199,13 @@ export class GameLoop {
         ]
     }
 
-    private async runPhases(context: GameLoopPhaseContext): Promise<void> {
+    private runPhases(context: GameLoopPhaseContext): void {
         for (const phase of this.phases) {
             if (phase.shouldRun && !phase.shouldRun(context)) {
                 continue
             }
 
-            await phase.run(context)
+            phase.run(context)
         }
     }
 }
