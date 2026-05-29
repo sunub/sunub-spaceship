@@ -3,11 +3,13 @@ import {
     type RigidBody,
     RigidBodyDesc,
 } from "@dimforge/rapier3d-compat"
+import { gsap } from "gsap"
 import { inject, injectable } from "inversify"
-import { color, float, texture } from "three/tsl"
+import { color, float, texture, uniform } from "three/tsl"
 import {
     Box3,
     ClampToEdgeWrapping,
+    Color,
     MathUtils,
     Mesh,
     type MeshStandardMaterial,
@@ -68,6 +70,16 @@ export class SpaceShip extends ResourceModel {
     private readonly visualDebugModule: SpaceShipVisualDebugModule
 
     private readonly engineFlamesFX: EngineFlameFX
+
+    private leftDirectionLight: Mesh | null = null
+    private rightDirectionLight: Mesh | null = null
+
+    private readonly leftLightIntensity = uniform(0.0)
+    private readonly rightLightIntensity = uniform(0.0)
+
+    private _activeTurn: "left" | "right" | "none" = "none"
+    private _leftLightTween: gsap.core.Tween | null = null
+    private _rightLightTween: gsap.core.Tween | null = null
 
     constructor(
         @inject(GAME_CONTEXT.SERVICE.ResourceService)
@@ -146,6 +158,8 @@ export class SpaceShip extends ResourceModel {
         this.mesh.traverse((child) => {
             if (child instanceof Mesh) {
                 const originalMaterial = child.material as MeshStandardMaterial
+                const leftDirectionLight = "spaceship_right_movement_light"
+                const rightDirectionLight = "spaceship_left_movement_light"
                 const materialToApply =
                     this.getOptimizedMaterial(originalMaterial)
                 const isEmissiveSurface =
@@ -154,6 +168,52 @@ export class SpaceShip extends ResourceModel {
                 child.material = materialToApply
                 child.castShadow = !isEmissiveSurface
                 child.receiveShadow = false
+
+                if (child.name === leftDirectionLight) {
+                    this.leftDirectionLight = child
+
+                    const baseColor =
+                        originalMaterial.emissive.getHex() !== 0
+                            ? originalMaterial.emissive
+                            : new Color(0x00ff00)
+                    const emissionNode = color(baseColor).mul(
+                        this.leftLightIntensity,
+                    )
+
+                    child.material = new MeshDefaultMaterial({
+                        side: originalMaterial.side,
+                        shadowSide:
+                            originalMaterial.shadowSide ??
+                            originalMaterial.side,
+                        hasCoreShadows: false,
+                        hasDropShadows: false,
+                        hasLightBounce: false,
+                        reorientDoubleSidedNormals: false,
+                        emissionNode: emissionNode,
+                    })
+                } else if (child.name === rightDirectionLight) {
+                    this.rightDirectionLight = child
+
+                    const baseColor =
+                        originalMaterial.emissive.getHex() !== 0
+                            ? originalMaterial.emissive
+                            : new Color(0x00ff00)
+                    const emissionNode = color(baseColor).mul(
+                        this.rightLightIntensity,
+                    )
+
+                    child.material = new MeshDefaultMaterial({
+                        side: originalMaterial.side,
+                        shadowSide:
+                            originalMaterial.shadowSide ??
+                            originalMaterial.side,
+                        hasCoreShadows: false,
+                        hasDropShadows: false,
+                        hasLightBounce: false,
+                        reorientDoubleSidedNormals: false,
+                        emissionNode: emissionNode,
+                    })
+                }
             }
         })
 
@@ -276,8 +336,8 @@ export class SpaceShip extends ResourceModel {
 
         return Boolean(
             material.emissiveMap ||
-                hasEmissiveColor ||
-                materialName.includes("light"),
+            hasEmissiveColor ||
+            materialName.includes("light"),
         )
     }
 
@@ -391,6 +451,53 @@ export class SpaceShip extends ResourceModel {
         this.engineFlamesFX.update(this.flightController.getSmoothedThrust())
     }
 
+    private _updateDirectionalLights(roll: number): void {
+        let targetTurn: "left" | "right" | "none" = "none"
+
+        if (roll < -0.1) {
+            targetTurn = "right"
+        } else if (roll > 0.1) {
+            targetTurn = "left"
+        }
+
+        if (this._activeTurn === targetTurn) {
+            return
+        }
+
+        this._activeTurn = targetTurn
+
+        if (this._leftLightTween) {
+            this._leftLightTween.kill()
+            this._leftLightTween = null
+        }
+
+        if (this._rightLightTween) {
+            this._rightLightTween.kill()
+            this._rightLightTween = null
+        }
+
+        this.leftLightIntensity.value = 0.0
+        this.rightLightIntensity.value = 0.0
+
+        if (targetTurn === "left") {
+            this._leftLightTween = gsap.to(this.leftLightIntensity, {
+                value: 100.0,
+                duration: 0.4,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine",
+            })
+        } else if (targetTurn === "right") {
+            this._rightLightTween = gsap.to(this.rightLightIntensity, {
+                value: 100.0,
+                duration: 0.4,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine",
+            })
+        }
+    }
+
     private processInputAndVisuals(): void {
         if (!this.rigidBody || !this.shipPivot || this.isLocked) return
 
@@ -424,6 +531,7 @@ export class SpaceShip extends ResourceModel {
             this.flightController.updateMovementInput(0, 0)
         }
 
+        this._updateDirectionalLights(controlState.roll)
         this.animator.updateBanking(
             controlState.roll,
             this.time.delta * 0.001,
@@ -489,6 +597,20 @@ export class SpaceShip extends ResourceModel {
     }
 
     public override dispose(): void {
+        if (
+            this.leftDirectionLight?.material &&
+            !Array.isArray(this.leftDirectionLight.material)
+        ) {
+            this.leftDirectionLight.material.dispose()
+        }
+
+        if (
+            this.rightDirectionLight?.material &&
+            !Array.isArray(this.rightDirectionLight.material)
+        ) {
+            this.rightDirectionLight.material.dispose()
+        }
+
         this.materialCache.forEach((material) => {
             material.dispose()
         })

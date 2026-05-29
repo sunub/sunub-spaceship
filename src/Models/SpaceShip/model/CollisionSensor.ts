@@ -1,6 +1,7 @@
 import { Cuboid, type RigidBody } from "@dimforge/rapier3d-compat"
 import { inject, injectable } from "inversify"
 import {
+    ArrowHelper,
     BoxGeometry,
     Mesh,
     MeshBasicMaterial,
@@ -22,6 +23,7 @@ export class CollisionSensor {
     private config: SensorConfig | null = null
 
     private debugMesh: Mesh | null = null
+    private debugDirectionArrow: ArrowHelper | null = null
     private readonly COLOR_SAFE = 0x0000ff
     private readonly COLOR_HIT = 0xff0000
 
@@ -30,16 +32,10 @@ export class CollisionSensor {
         private physicsService: IPhysicsService,
     ) {}
 
-    /**
-     * 센서 설정을 초기화합니다. DI로 주입받은 후 각 모델의 특성에 맞게 설정할 수 있습니다.
-     */
     public setup(config: SensorConfig): void {
         this.config = config
     }
 
-    /**
-     * 디버그용 메쉬를 생성하고 반환합니다.
-     */
     public initDebugMesh(): Mesh {
         if (!this.config) {
             throw new Error(
@@ -66,6 +62,14 @@ export class CollisionSensor {
             this.config.offset.up,
             0,
         )
+
+        this.debugDirectionArrow = new ArrowHelper(
+            new Vector3(1, 0, 0),
+            new Vector3(0, 0, 0),
+            this.config.detectionRange,
+            0x00ffff,
+        )
+        this.debugMesh.add(this.debugDirectionArrow)
 
         return this.debugMesh
     }
@@ -129,9 +133,17 @@ export class CollisionSensor {
         )
 
         if (debugMode && this.debugMesh) {
+            this.debugMesh.position.set(
+                this.config.offset.forward,
+                this.config.offset.up,
+                0,
+            )
             ;(this.debugMesh.material as MeshBasicMaterial).color.setHex(
                 this.isObstacle ? this.COLOR_HIT : this.COLOR_SAFE,
             )
+            if (this.debugDirectionArrow) {
+                this.debugDirectionArrow.setLength(this.config.detectionRange)
+            }
         }
     }
 
