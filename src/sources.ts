@@ -4,11 +4,7 @@ import type { Source } from "./utils/Resources"
 
 export const modelSources = [
     ["floorModel", "gltfModel", "/models/floor/floor-compressed.glb"],
-    [
-        "spaceshipModel",
-        "gltfModel",
-        "/models/player/spaceship-optimized-compressed.glb",
-    ],
+    ["spaceshipModel", "gltfModel", "/models/player/spaceship-compressed.glb"],
     ["mountainModel", "gltfModel", "/models/floor/mountain-compressed.glb"],
     [
         "mountainOutlinerModel",

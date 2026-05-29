@@ -5,12 +5,17 @@ import { fileURLToPath } from "node:url"
 import { glob } from "glob"
 
 function formatBytes(bytes: number, decimals: number = 2) {
-    if (!+bytes) return "0 Bytes"
+    if (!+bytes) {
+        return "0 Bytes"
+    }
     const k = 1024
     const dm = decimals < 0 ? 0 : decimals
     const sizes = ["Bytes", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return `${parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`
+    const absBytes = Math.abs(bytes)
+    const i = Math.floor(Math.log(absBytes) / Math.log(k))
+    const sign = bytes < 0 ? "-" : ""
+
+    return `${sign}${parseFloat((absBytes / k ** i).toFixed(dm))} ${sizes[i]}`
 }
 
 async function printCompressionStats(originalPath: string, newPath: string) {
@@ -24,7 +29,7 @@ async function printCompressionStats(originalPath: string, newPath: string) {
         const reset = "\x1b[0m"
 
         console.log(
-            `  📊 Stats: ${formatBytes(originalStats.size)} → ${color}${formatBytes(newStats.size)} (-${percent}%)${reset}`,
+            `  📊 Stats: ${formatBytes(originalStats.size)} → ${color}${formatBytes(newStats.size)} (-${percent}%)${reset}\n💾 Saved: ${color}${formatBytes(saved)}${reset}, ${fileURLToPath(new URL(`file://${newPath}`))}${newStats.isFile() ? "" : "/"}\n`,
         )
     } catch (_) {
         console.error(`  ⚠️ Stats Error: Unable to read file size.`)
@@ -117,32 +122,40 @@ async function printCompressionStats(originalPath: string, newPath: string) {
     console.log(`\n🎨 발견된 텍스처 파일: ${files.length}개`)
 
     const defaultPreset =
-        "--nowarn --2d --t2 --encode etc1s --qlevel 255 --assign_oetf srgb --target_type RGB"
+        "--format R8G8B8_SRGB --assign-tf srgb --encode basis-lz --qlevel 255"
 
     const presets: [RegExp, string][] = [
         [
-            /mountain_disp.png$/,
-            "--nowarn --2d --t2 --encode etc1s --qlevel 255 --assign_oetf linear --target_type R --swizzle r001",
+            /mountain_disp\.png$/,
+            "--format R8G8B8A8_UNORM --assign-tf linear --encode basis-lz --qlevel 255 --swizzle r001",
         ],
         [
-            /mountain_diff.jpg$/,
-            "--nowarn --2d --t2 --encode etc1s --qlevel 255 --assign_oetf srgb --target_type RGB",
+            /mountain_diff\.jpg$/,
+            "--format R8G8B8_SRGB --assign-tf srgb --encode basis-lz --qlevel 255",
         ],
         [
-            /mountain_nor_gl.exr$/,
-            "--nowarn --t2 --encode uastc --zcmp 10 --assign_oetf linear --target_type RGB",
+            /mountain_nor_gl\.exr$/,
+            "--format R8G8B8_UNORM --assign-tf linear --encode uastc --zcmp 10",
         ],
         [
-            /mountain_rough.exr$/,
-            "--nowarn --t2 --encode uastc --zcmp 10 --assign_oetf linear --target_type RGB",
+            /mountain_rough\.exr$/,
+            "--format R8G8B8_UNORM --assign-tf linear --encode uastc --zcmp 10",
         ],
         [
-            /stars.png$/,
-            "--nowarn --2d --t2 --encode etc1s --qlevel 255 --assign_oetf srgb --target_type RGB",
+            /stars\.png$/,
+            "--format R8G8B8_SRGB --assign-tf srgb --encode basis-lz --qlevel 255",
         ],
         [
-            /rogland_clear_night_2k.hdr$/,
-            "--t2 --encode uastc --uastc_hdr --assign_oetf linear --genmipmap",
+            /rogland_clear_night_2k\.hdr$/,
+            "--format R16G16B16A16_SFLOAT --assign-tf linear --encode uastc-hdr-4x4 --generate-mipmap",
+        ],
+        [
+            /stars\.exr$/,
+            "--format R16G16B16A16_SFLOAT --assign-tf linear --encode uastc-hdr-4x4",
+        ],
+        [
+            /terrainGrass\.exr$/,
+            "--format R16G16B16A16_SFLOAT --assign-tf linear --encode uastc-hdr-4x4",
         ],
     ]
 
@@ -161,41 +174,12 @@ async function printCompressionStats(originalPath: string, newPath: string) {
 
         console.log(`\nCompressing: ${path.basename(inputFile)}`)
 
-        let targetInputFile = inputFile
-        let isTempFile = false
-
-        if (inputFile.endsWith(".exr")) {
-            try {
-                const tempPng = path.join(
-                    parsePath.dir,
-                    `${parsePath.name}_temp.png`,
-                )
-                const convert = spawn("convert", [inputFile, tempPng])
-
-                await new Promise<void>((resolve, reject) => {
-                    convert.on("close", (code) => {
-                        if (code === 0) resolve()
-                        else
-                            reject(
-                                new Error(
-                                    `ImageMagick exited with code ${code}`,
-                                ),
-                            )
-                    })
-                })
-
-                targetInputFile = tempPng
-                isTempFile = true
-            } catch (err) {
-                console.error(`  ❌ EXR conversion failed: ${err}`)
-                return
-            }
-        }
-
-        const toktx = spawn("toktx", [
+        const targetInputFile = inputFile
+        const toktx = spawn("ktx", [
+            "create",
             ...args.split(" "),
-            outputFile,
             targetInputFile,
+            outputFile,
         ])
         toktx.stderr.on("data", (data) => console.error(`  toktx err: ${data}`))
 
@@ -207,14 +191,6 @@ async function printCompressionStats(originalPath: string, newPath: string) {
                 resolve()
             }),
         )
-
-        if (isTempFile) {
-            try {
-                await fs.unlink(targetInputFile)
-            } catch (err) {
-                console.error(`❌ Temp file deletion failed: ${err}`)
-            }
-        }
     })
 
     await Promise.all(filesPromise)
