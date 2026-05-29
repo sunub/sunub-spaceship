@@ -1,2 +1,2 @@
-export { Svgs } from "./Svgs"
 export type { SvgBuildOptions } from "./Svgs"
+export { Svgs } from "./Svgs"

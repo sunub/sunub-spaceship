@@ -189,7 +189,7 @@ export class WorldManager {
             if ("setVisible" in obj && typeof obj.setVisible === "function") {
                 obj.setVisible(visible)
             } else if ("visible" in obj) {
-                ; (obj as Object3D).visible = visible
+                ;(obj as Object3D).visible = visible
             }
         })
     }
@@ -204,7 +204,7 @@ export class WorldManager {
                 "updatePhysics" in obj &&
                 typeof (obj as IGameObject).updatePhysics === "function"
             ) {
-                ; (obj as IGameObject).updatePhysics?.(deltaTime)
+                ;(obj as IGameObject).updatePhysics?.(deltaTime)
             }
         })
     }
@@ -215,7 +215,7 @@ export class WorldManager {
                 "update" in obj &&
                 typeof (obj as IGameObject).update === "function"
             ) {
-                ; (obj as IGameObject).update(deltaTime)
+                ;(obj as IGameObject).update(deltaTime)
             }
         })
     }

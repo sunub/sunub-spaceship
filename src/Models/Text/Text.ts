@@ -1,5 +1,5 @@
 import type { Euler, Group, Vector3 } from "three/webgpu"
-import { Fonts, type FontBuildOptions } from "@/Models/Fonts"
+import { type FontBuildOptions, Fonts } from "@/Models/Fonts"
 import type { IGameObject } from "@/Services/IGameObject"
 import type { ISceneManager } from "@/Services/ISceneManager"
 

@@ -1,2 +1,2 @@
-export { ImagePlane } from "./ImagePlane"
 export type { ImagePlaneOptions } from "./ImagePlane"
+export { ImagePlane } from "./ImagePlane"

@@ -184,7 +184,9 @@ class PerformanceTrackerStore {
         }
 
         // ──── 전체 요약 ────
-        const allResources = [...this.phases.values()].flatMap((p) => p.resources)
+        const allResources = [...this.phases.values()].flatMap(
+            (p) => p.resources,
+        )
         const totalPhaseTime = [...this.phases.values()].reduce(
             (s, p) => s + p.duration,
             0,

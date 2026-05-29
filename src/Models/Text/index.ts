@@ -1,2 +1,2 @@
-export { Text } from "./Text"
 export type { TextOptions } from "./Text"
+export { Text } from "./Text"

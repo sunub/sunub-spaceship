@@ -7,10 +7,10 @@ import {
     Group,
     Mesh,
     MeshBasicMaterial,
-    ShapeGeometry,
-    Vector3,
     type Object3D,
+    ShapeGeometry,
     type Vector2,
+    Vector3,
 } from "three/webgpu"
 import { MeshDefaultMaterial } from "@/Materials/MeshDefaultMaterial"
 

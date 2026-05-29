@@ -1,6 +1,6 @@
 import { uniform, vec3 } from "three/tsl"
-import { MeshBasicNodeMaterial } from "three/webgpu"
 import type { Color } from "three/webgpu"
+import { MeshBasicNodeMaterial } from "three/webgpu"
 
 interface PluseMaterialOptions {
     color: number | string | Color

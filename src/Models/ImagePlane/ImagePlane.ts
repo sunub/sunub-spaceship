@@ -2,11 +2,11 @@ import { inject, injectable } from "inversify"
 import { color, texture } from "three/tsl"
 import {
     DoubleSide,
+    type Euler,
     Group,
     Mesh,
     MeshBasicMaterial,
     PlaneGeometry,
-    type Euler,
     type Texture,
     type Vector3,
 } from "three/webgpu"
@@ -40,7 +40,7 @@ export class ImagePlane implements IGameObject {
         @inject(GAME_CONTEXT.SERVICE.ResourceService)
         private readonly resourcesManager: IResourceService,
         private readonly options: ImagePlaneOptions,
-    ) { }
+    ) {}
 
     public async initialize(addToScene: boolean = true): Promise<void> {
         if (!this.modelGroup) {
@@ -96,7 +96,7 @@ export class ImagePlane implements IGameObject {
         this.modelGroup.visible = visible
     }
 
-    public update(_deltaTime: number): void { }
+    public update(_deltaTime: number): void {}
 
     public dispose(): void {
         if (this.modelGroup) {

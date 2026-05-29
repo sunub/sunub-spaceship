@@ -7,87 +7,38 @@ import {
     Vector3,
 } from "three/webgpu"
 
-/**
- * A physics-based flight controller that applies forces and torques for realistic movement.
- * Includes "Hard Stop" logic for collision handling.
- */
 export class FlightController {
-    // ─────────────────────────────────────────────────────────────────────────────
-    // ⚙️ PUBLIC TUNABLE PARAMETERS
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    /** Maximum forward speed (m/s) */
-    public maxSpeed: number = 10.0
-
-    /** Maximum turning speed (degrees per second) */
-    public turnSpeed: number = 90.0
-
-    /** How quickly the ship reaches target velocity (Higher = tighter control) */
+    public maxSpeed: number = 15.0
+    public turnSpeed: number = 150.0
     public forceFactor: number = 10.0
-
-    /** How quickly the ship reaches target rotation (Higher = snappier rotation) */
     public torqueFactor: number = 5.0
-
-    /** Input interpolation factor (Lower = smoother/slower, Higher = responsive) */
     public inputSmoothness: number = 0.1
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // 🔒 PRIVATE STATE
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    // Raw Inputs
     private rollInput: number = 0
     private thrustInput: number = 0
 
-    // Smoothed Inputs (for gradual acceleration)
     private smoothedRollInput: number = 0
     private smoothedThrustInput: number = 0
 
-    // Joystick / Pointer State
     public pointerVector: Vector2 | null = null
     private thrustEnabled: boolean = true
 
-    // Collision State
     private isBlocked: boolean = false
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // 🎮 INPUT METHODS
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Updates the collision state. Called from SpaceShip.ts
-     * @param blocked True if an obstacle is detected in front.
-     */
     public setBlocked(blocked: boolean) {
         this.isBlocked = blocked
     }
 
-    /**
-     * Updates keyboard/gamepad inputs.
-     */
     public updateMovementInput(roll: number, thrust: number) {
         this.rollInput = roll
         this.thrustInput = thrust
     }
 
-    /**
-     * Updates joystick/mouse inputs.
-     */
     public updatePointerInput(vector: Vector2, enableThrust: boolean = true) {
         this.pointerVector = vector.length() > 0.01 ? vector : null
         this.thrustEnabled = enableThrust
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // 🔄 PHYSICS UPDATE LOOP
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * The main physics update loop. Apply forces and torques here.
-     */
-    /**
-     * The main physics update loop. Apply forces and torques here.
-     */
     public handleMovement(
         rigidBody: RAPIER.RigidBody,
         deltaTime: number,
@@ -113,7 +64,6 @@ export class FlightController {
         const { targetLinvel, targetAngvel } =
             this.calculateTargetVelocities(currentRotation)
 
-        // 🛑 [핵심: 충돌 시 강제 제동 로직]
         if (this.isBlocked && isTryingToMoveForward) {
             // A. 물리적 전진 속도 강제 0 (물리적 관성 제거)
             // 현재 속도를 죽여서 즉시 멈추게 합니다. (회전은 건드리지 않음)

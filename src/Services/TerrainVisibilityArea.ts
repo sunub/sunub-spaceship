@@ -1,17 +1,17 @@
 import { inject, injectable } from "inversify"
 import {
-    BufferGeometry,
     BoxGeometry,
+    BufferGeometry,
     CircleGeometry,
     DoubleSide,
     LineBasicMaterial,
     LineSegments,
     Mesh,
     MeshBasicNodeMaterial,
+    type Object3D,
     Plane,
     Raycaster,
     TorusGeometry,
-    type Object3D,
     Vector2,
     Vector3,
 } from "three/webgpu"

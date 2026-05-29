@@ -1,9 +1,10 @@
 import { FileLoader } from "three"
 import { strFromU8, unzipSync } from "three/addons/libs/fflate.module.js"
-import { FontLoader, type Font } from "three/examples/jsm/loaders/FontLoader.js"
+import { type Font, FontLoader } from "three/examples/jsm/loaders/FontLoader.js"
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js"
 import { color, float, texture } from "three/tsl"
 import {
+    type Box3,
     CanvasTexture,
     Color,
     DoubleSide,
@@ -11,11 +12,10 @@ import {
     LinearFilter,
     Mesh,
     MeshBasicMaterial,
+    type Object3D,
     PlaneGeometry,
     ShapeGeometry,
     SRGBColorSpace,
-    type Box3,
-    type Object3D,
 } from "three/webgpu"
 import { MeshDefaultMaterial } from "@/Materials/MeshDefaultMaterial"
 
