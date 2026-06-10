@@ -8,8 +8,8 @@ import {
 } from "three/webgpu"
 
 export class FlightController {
-    public maxSpeed: number = 15.0
-    public turnSpeed: number = 150.0
+    public maxSpeed: number = 12.0
+    public turnSpeed: number = 160.0
     public forceFactor: number = 10.0
     public torqueFactor: number = 5.0
     public inputSmoothness: number = 0.1

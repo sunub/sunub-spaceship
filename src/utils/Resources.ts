@@ -220,9 +220,12 @@ export class Resources implements IResourceService {
             )
         }
         if (mode === "macrotask") {
-            const globalScheduler = typeof window !== "undefined" ? (window as any).scheduler : (globalThis as any).scheduler;
+            const globalScheduler =
+                typeof window !== "undefined"
+                    ? (window as any).scheduler
+                    : (globalThis as any).scheduler
             if (globalScheduler && globalScheduler.yield) {
-                return globalScheduler.yield();
+                return globalScheduler.yield()
             }
             return new Promise((resolve) => setTimeout(resolve, 0))
         }
@@ -233,14 +236,18 @@ export class Resources implements IResourceService {
     public async *loadGenerator(
         sources: Source[],
         options: LoadOptions = {},
-    ): AsyncGenerator<{
-        name: string
-        type: LoaderType
-        path: string
-        index: number
-        total: number
-        file: any
-    }, void, unknown> {
+    ): AsyncGenerator<
+        {
+            name: string
+            type: LoaderType
+            path: string
+            index: number
+            total: number
+            file: any
+        },
+        void,
+        unknown
+    > {
         const toLoad = sources.length
         if (toLoad === 0) return
 
@@ -286,9 +293,19 @@ export class Resources implements IResourceService {
                             () =>
                                 new Promise((resolve, reject) => {
                                     if (type === "cubeTexture") {
-                                        loader.load([path], resolve, undefined, reject)
+                                        loader.load(
+                                            [path],
+                                            resolve,
+                                            undefined,
+                                            reject,
+                                        )
                                     } else {
-                                        loader.load(path, resolve, undefined, reject)
+                                        loader.load(
+                                            path,
+                                            resolve,
+                                            undefined,
+                                            reject,
+                                        )
                                     }
                                 }),
                             options.resourcePhase,
@@ -297,7 +314,10 @@ export class Resources implements IResourceService {
                         if (callback) callback(file)
                         this.items[name] = file
                     } catch (error) {
-                        console.error(`Resources: Failed to load ${name} at ${path}`, error)
+                        console.error(
+                            `Resources: Failed to load ${name} at ${path}`,
+                            error,
+                        )
                     }
                 }
             }

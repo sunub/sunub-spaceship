@@ -336,8 +336,8 @@ export class SpaceShip extends ResourceModel {
 
         return Boolean(
             material.emissiveMap ||
-            hasEmissiveColor ||
-            materialName.includes("light"),
+                hasEmissiveColor ||
+                materialName.includes("light"),
         )
     }
 
