@@ -40,10 +40,14 @@ const isPerfTrackingEnabled = (): boolean => {
     return isPerfTrackingFromEnv()
 }
 
-const enableOrDisablePerformanceTracker = () =>
-    isPerfTrackingEnabled()
+const enableOrDisablePerformanceTracker = () => {
+    if (typeof window !== "undefined") {
+        (window as any).PerformanceTracker = PerformanceTracker;
+    }
+    return isPerfTrackingEnabled()
         ? PerformanceTracker.enable()
-        : PerformanceTracker.disable()
+        : PerformanceTracker.disable();
+};
 
 const main = async () => {
     enableOrDisablePerformanceTracker()
