@@ -14,6 +14,7 @@ import type { Resources, Source } from "@/utils/Resources"
 import { GAME_CONTEXT } from "./DI/DITypes"
 import type { DOMManager } from "./DOMManger"
 import type { Entry } from "./Entry"
+import { PerformanceTracker } from "@/utils/PerformanceTracker"
 
 @injectable()
 export class GameBootstrapper {
@@ -110,6 +111,7 @@ export class GameBootstrapper {
             }
         }
 
+        PerformanceTracker.startPhase("Entry Load")
         await this.resourceService.load(
             entrySources,
             (loadedCount) => createPhaseProgressHandler(0)(loadedCount),
@@ -117,12 +119,16 @@ export class GameBootstrapper {
                 resourcePhase: "Entry Load",
             },
         )
+        PerformanceTracker.endPhase("Entry Load")
+
         await this.entry.setupEntryScene()
         this.rendering.setPostProcessing()
         await this.rendering.preparePresentation()
         this.gameLoop.start("entry")
 
         const rapierModulePromise = import("@dimforge/rapier3d-compat")
+
+        PerformanceTracker.startPhase("SingleProcess Load")
         await this.resourceService.load(
             allSources,
             (loadedCount) =>
@@ -131,9 +137,12 @@ export class GameBootstrapper {
                 resourcePhase: "SingleProcess Load",
             },
         )
+        PerformanceTracker.endPhase("SingleProcess Load")
 
         const rapierModule = await rapierModulePromise
         await this.initializePhysics(rapierModule)
+
+        PerformanceTracker.printReport()
     }
 
     private createProgressTracker(totalCount: number) {
