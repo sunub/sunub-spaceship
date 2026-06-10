@@ -115,7 +115,7 @@ export class ProjectOutpost implements IGameObject {
 
     private setupTrigger(): void {
         this.trigger = new TriggerRegion(
-            this.projectData.position,
+            this.mesh.position.clone(),
             new Vector3(12, 12, 12),
             this.projectData.title,
             0x00ffff,

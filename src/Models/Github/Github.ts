@@ -13,7 +13,7 @@ export class Github extends ResourceModel {
         @inject(GAME_CONTEXT.SERVICE.ResourceService)
         resoucesManager: IResourceService,
         @inject(GAME_CONTEXT.MANAGER.SceneManager) sceneManager: ISceneManager,
-        position: Vector3 = new Vector3(0, 0, 0),
+        position: Vector3 = new Vector3(19, 0, -47),
         scale: Vector3 = new Vector3(1, 1, 1),
     ) {
         super(resoucesManager, sceneManager, "githubModel", "", position, scale)

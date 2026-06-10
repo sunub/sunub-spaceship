@@ -47,7 +47,7 @@ export class ProjectManager {
             description: "sunub가 작업 중인 프로젝트들을 확인 할 수 있습니다.",
             url: "https://github.com/sunub",
             tags: [],
-            position: new Vector3(-12, 0, 28),
+            position: new Vector3(6, 7, -18),
         },
     ]
 
