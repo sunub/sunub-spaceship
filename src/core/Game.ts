@@ -136,8 +136,8 @@ export class Game {
         }
 
         this.notification.show(
-            "조작키를 사용하여 우주선을 조작해 프로젝트 영역을 찾아주세요",
-            5000,
+            "WASD 조작키나 터치를 사용해 우주선을 조종하여 바닥이 빛나는 원이 있는 영역을 찾아보세요!",
+            6000,
         )
         this.spaceShip.unlock()
     }
