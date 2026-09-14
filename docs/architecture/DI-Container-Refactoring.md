@@ -384,7 +384,11 @@ constructor(
 
 `Floor`는 이제 Three.js `Scene`이 아니라 **메서드 3개짜리 인터페이스**에 의존한다.
 `IResourceService`는 `getItem()` 하나뿐이다.
-`GameContext` 14개 필드 → 인터페이스 3개, 실제 접근면 5개 메서드.
+`GameContext` 14개 필드 → 인터페이스 3개, 실제 접근면 11개 메서드
+(`ISceneManager` 3 + `IResourceService` 1 + `IPhysicsService` 7).
+
+메서드 수만 보면 극적이지 않은데, 줄어든 건 개수가 아니라 **접근 가능한 범위**다.
+이전에는 `context.game`을 타고 시스템 어디로든 갈 수 있었고 지금은 이 11개가 전부다.
 
 그리고 `Floor`를 붙잡는 코드는 이제 세 군데뿐이다.
 
